@@ -23,6 +23,36 @@
       }
     ]
   },
+  "overrides": [
+    {
+      "files": ["src/common/**/*.ts", "src/config/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@pms/web", "@pms/web/*"],
+                "message": "backend must not import web."
+              },
+              {
+                "group": ["@pms/shared-types/*"],
+                "message": "Import from the package root: @pms/shared-types."
+              },
+              {
+                "group": ["**/web/**", "**/packages/**"],
+                "message": "Do not reach into another workspace by path."
+              },
+              {
+                "group": ["**/modules/**"],
+                "message": "common/ and config/ must not import a feature module. Modules import them, not the other way."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
   "env": {
     "node": true
   }

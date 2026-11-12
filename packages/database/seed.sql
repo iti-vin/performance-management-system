@@ -1,6 +1,6 @@
 -- ============================================================================
 -- PMS sample seed data.
--- Aligned with .docs/database_design.md via schema pms.*.
+-- Aligned with .docs/database-design.md via schema pms.*.
 -- Idempotent: safe to rerun. Uses deterministic UUIDs (fixed suffix pattern).
 -- Sample data only. Do not use in production.
 -- ============================================================================

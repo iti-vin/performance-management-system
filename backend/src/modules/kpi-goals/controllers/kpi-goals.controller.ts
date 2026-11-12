@@ -21,16 +21,12 @@ import {
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import type { Request } from "express";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
-import { ApiErrorResponseDto } from "../auth/dtos/api-response.dto.js";
-import { CreateKpiGoalTemplateDto, UpdateKpiGoalTemplateDto } from "./dtos/kpi-goal-template.dto.js";
-import { KpiGoalTemplate } from "./entities/kpi-goal-template.entity.js";
-import { KpiTemplateVersion } from "./entities/kpi-template-version.entity.js";
-import { KpiIndicator } from "./entities/kpi-indicator.entity.js";
-import { KpiIndicatorScale } from "./entities/kpi-indicator-scale.entity.js";
-import { KpiIndicatorMatrixRow } from "./entities/kpi-indicator-matrix-row.entity.js";
-import { KpiIndicatorMatrixColumn } from "./entities/kpi-indicator-matrix-column.entity.js";
-import { KpiGoalsService } from "./services/kpi-goals.service.js";
+import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard.js";
+import { ApiErrorResponseDto } from "../../../common/dtos/api-response.dto.js";
+import { CreateKpiGoalTemplateDto } from "../dtos/create-kpi-goal-template.dto.js";
+import { UpdateKpiGoalTemplateDto } from "../dtos/update-kpi-goal-template.dto.js";
+import { KpiGoalTemplate } from "../entities/kpi-goal-template.entity.js";
+import { KpiGoalsService } from "../services/kpi-goals.service.js";
 
 @ApiTags("KPI Goals")
 @Controller("kpi-goals")

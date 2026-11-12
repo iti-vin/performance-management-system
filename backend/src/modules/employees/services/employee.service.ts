@@ -3,7 +3,9 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { randomUUID } from "node:crypto";
 import { EmployeeDomain } from "../entities/employee-domain.entity.js";
-import { CreateEmployeeDto, EmployeeStatus, UpdateEmployeeDto } from "../dtos/employee.dto.js";
+import { CreateEmployeeDto } from "../dtos/create-employee.dto.js";
+import { EmployeeStatus } from "../types/employee-status.enum.js";
+import { UpdateEmployeeDto } from "../dtos/update-employee.dto.js";
 import { User } from "../../auth/entities/user.entity.js";
 
 @Injectable()

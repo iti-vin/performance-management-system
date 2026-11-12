@@ -5,8 +5,9 @@ import { Repository } from "typeorm";
 import { vi } from "vitest";
 import { EmployeeService } from "./employee.service.js";
 import { EmployeeDomain } from "../entities/employee-domain.entity.js";
-import { CreateEmployeeDto, UpdateEmployeeDto } from "../dtos/employee.dto.js";
-import { EmployeeStatus } from "../dtos/employee.dto.js";
+import { CreateEmployeeDto } from "../dtos/create-employee.dto.js";
+import { UpdateEmployeeDto } from "../dtos/update-employee.dto.js";
+import { EmployeeStatus } from "../types/employee-status.enum.js";
 import { User } from "../../auth/entities/user.entity.js";
 
 describe("EmployeeService", () => {

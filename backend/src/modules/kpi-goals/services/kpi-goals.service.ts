@@ -13,20 +13,10 @@ import { KpiIndicator } from '../entities/kpi-indicator.entity.js';
 import { KpiIndicatorScale } from '../entities/kpi-indicator-scale.entity.js';
 import { KpiIndicatorMatrixRow } from '../entities/kpi-indicator-matrix-row.entity.js';
 import { KpiIndicatorMatrixColumn } from '../entities/kpi-indicator-matrix-column.entity.js';
-import {
-  CreateKpiGoalTemplateDto,
-  IndicatorDto,
-  UpdateKpiGoalTemplateDto,
-} from '../dtos/kpi-goal-template.dto.js';
-
-export interface TemplateTree {
-  template: KpiGoalTemplate;
-  version: KpiTemplateVersion | null;
-  indicators: KpiIndicator[];
-  scales: KpiIndicatorScale[];
-  matrixRows: KpiIndicatorMatrixRow[];
-  matrixColumns: KpiIndicatorMatrixColumn[];
-}
+import { CreateKpiGoalTemplateDto } from '../dtos/create-kpi-goal-template.dto.js';
+import { IndicatorDto } from '../dtos/kpi-indicator.dto.js';
+import { UpdateKpiGoalTemplateDto } from '../dtos/update-kpi-goal-template.dto.js';
+import type { TemplateTree } from '../types/template-tree.types.js';
 
 @Injectable()
 export class KpiGoalsService {

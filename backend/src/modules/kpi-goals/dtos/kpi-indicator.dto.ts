@@ -1,19 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsArray,
-  IsBoolean,
-  IsIn,
-  IsInt,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Max,
-  MaxLength,
-  Min,
-  MinLength,
-  ValidateNested,
-} from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IndicatorDirectionValues } from '../entities/kpi-indicator.entity.js';
 
@@ -130,44 +116,4 @@ export class IndicatorDto {
   @ValidateNested({ each: true })
   @Type(() => MatrixColumnDto)
   matrixColumns?: MatrixColumnDto[];
-}
-
-export class CreateKpiGoalTemplateDto {
-  @ApiProperty({ format: 'uuid', description: 'Existing pms.companies row' })
-  @IsUUID()
-  companyId: string;
-
-  @ApiProperty({
-    required: false,
-    nullable: true,
-    format: 'uuid',
-    description: 'Optional position scope. Null means company-wide.',
-  })
-  @IsOptional()
-  @IsUUID()
-  positionId?: string | null;
-
-  @ApiProperty({ type: [IndicatorDto] })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => IndicatorDto)
-  indicators: IndicatorDto[];
-}
-
-export class UpdateKpiGoalTemplateDto {
-  @ApiProperty({
-    required: false,
-    nullable: true,
-    format: 'uuid',
-    description: 'Optional position scope. Null means company-wide.',
-  })
-  @IsOptional()
-  @IsUUID()
-  positionId?: string | null;
-
-  @ApiProperty({ type: [IndicatorDto] })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => IndicatorDto)
-  indicators: IndicatorDto[];
 }

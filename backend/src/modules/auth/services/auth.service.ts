@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -113,9 +112,9 @@ export class AuthService {
           code: result.code,
           firstName: result.firstName,
           lastName: result.lastName,
-          company: hrEmploymentRecord?.company!,
-          department: hrEmploymentRecord?.department!,
-          position: hrEmploymentRecord?.position!,
+          company: hrEmploymentRecord.company,
+          department: hrEmploymentRecord.department,
+          position: hrEmploymentRecord.position,
           status: "active",
         }),
       },
@@ -237,9 +236,9 @@ export class AuthService {
     code: string;
     firstName: string;
     lastName: string;
-    company: string;
-    department: string;
-    position: string;
+    company: string | null;
+    department: string | null;
+    position: string | null;
     status: string;
   }) {
     return {

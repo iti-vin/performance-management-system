@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { EmployeeStatus } from "../dtos/employee.dto.js";
+import { EmployeeStatus } from "../types/employee-status.enum.js";
 
 @Entity({ name: "employees", schema: "public" })
 export class EmployeeDomain {

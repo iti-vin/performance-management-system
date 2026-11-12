@@ -41,13 +41,16 @@ NestJS 12 (Express), TypeORM 1.1 (a `postgres` and an `mssql` connection), Passp
 src/
 ├── main.ts            Bootstrap: ValidationPipe, Swagger, listen on PORT
 ├── app.module.ts      Database connections and the feature modules
-├── modules/
-│   ├── auth/          Controller, service, JWT strategy and guard, DTOs, entities
+├── config/            env.config.ts: environment variables, checked at startup
+├── common/            Decorators, DTOs and guards that two or more modules use
+├── modules/           Each module: controllers/, services/, dtos/, entities/, types/
+│   ├── auth/          Controller, service, JWT strategy, DTOs, entities
 │   ├── employees/     Controller, service, admin guard, entities
 │   ├── kpi-goals/     KPI goal templates, versions, indicators, scales, matrix
 │   └── behavioral-assessment/   Templates, versions, sections, questions, options
-└── utils/             Shared decorators
 ```
+
+The full layout and its rules are in `docs/project-structure.md`.
 
 ### Application Flow
 

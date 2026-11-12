@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { BehavioralAssessmentController } from './behavioral-assessment.controller.js';
+import { BehavioralAssessmentController } from './controllers/behavioral-assessment.controller.js';
 import { BehavioralAssessmentService } from './services/behavioral-assessment.service.js';
 import { BehavioralTemplate } from './entities/behavioral-template.entity.js';
 import { BehavioralTemplateVersion } from './entities/behavioral-template-version.entity.js';

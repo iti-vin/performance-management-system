@@ -24,17 +24,15 @@ import {
 } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
-import { ApiErrorResponseDto } from "../auth/dtos/api-response.dto.js";
-import { User } from "../auth/entities/user.entity.js";
-import { EmployeeService } from "./services/employee.service.js";
-import { AdminRoleGuard } from "./guards/admin-role.guard.js";
-import { CreateEmployeeDto, UpdateEmployeeDto } from "./dtos/employee.dto.js";
-import { EmployeeDomain } from "./entities/employee-domain.entity.js";
-
-interface AuthedUser {
-  userId: string;
-}
+import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard.js";
+import { ApiErrorResponseDto } from "../../../common/dtos/api-response.dto.js";
+import { User } from "../../auth/entities/user.entity.js";
+import { EmployeeService } from "../services/employee.service.js";
+import { AdminRoleGuard } from "../guards/admin-role.guard.js";
+import { CreateEmployeeDto } from "../dtos/create-employee.dto.js";
+import { UpdateEmployeeDto } from "../dtos/update-employee.dto.js";
+import { EmployeeDomain } from "../entities/employee-domain.entity.js";
+import type { AuthedUser } from "../types/authed-user.types.js";
 
 @ApiTags("Employees")
 @Controller("employees")

@@ -1,6 +1,6 @@
 -- ============================================================================
 -- PMS (HRDotNet Performance) schema
--- Aligned with .docs/database_design.md
+-- Aligned with .docs/database-design.md
 --
 -- Conventions from design doc section 1:
 --   - CREATE SCHEMA pms; all objects below live in pms.

@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { EmployeeController } from "./employees.controller.js";
+import { EmployeeController } from "./controllers/employees.controller.js";
 import { EmployeeService } from "./services/employee.service.js";
 import { AdminRoleGuard } from "./guards/admin-role.guard.js";
 import { EmployeeDomain } from "./entities/employee-domain.entity.js";

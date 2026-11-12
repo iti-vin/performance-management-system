@@ -12,7 +12,7 @@ import { BehavioralTemplateVersion } from '../entities/behavioral-template-versi
 import { BehavioralSection } from '../entities/behavioral-section.entity.js';
 import { BehavioralQuestion } from '../entities/behavioral-question.entity.js';
 import { BehavioralChoiceOption } from '../entities/behavioral-choice-option.entity.js';
-import { CreateBehavioralTemplateDto } from '../dtos/behavioral-template.dto.js';
+import { CreateBehavioralTemplateDto } from '../dtos/create-behavioral-template.dto.js';
 
 type MockRepo<T> = {
   create: Mock<(data: Partial<T>) => T>;

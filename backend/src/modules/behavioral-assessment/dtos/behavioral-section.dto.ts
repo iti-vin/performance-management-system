@@ -1,17 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsArray,
-  IsBoolean,
-  IsIn,
-  IsInt,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MaxLength,
-  Min,
-  MinLength,
-  ValidateNested,
-} from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export const BEHAVIORAL_QUESTION_TYPES = [
@@ -104,24 +92,4 @@ export class SectionDto {
   @ValidateNested({ each: true })
   @Type(() => QuestionDto)
   questions: QuestionDto[];
-}
-
-export class CreateBehavioralTemplateDto {
-  @ApiProperty({ format: 'uuid', description: 'Existing pms.companies row' })
-  @IsUUID()
-  companyId: string;
-
-  @ApiProperty({ type: [SectionDto] })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SectionDto)
-  sections: SectionDto[];
-}
-
-export class UpdateBehavioralTemplateDto {
-  @ApiProperty({ type: [SectionDto] })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SectionDto)
-  sections: SectionDto[];
 }

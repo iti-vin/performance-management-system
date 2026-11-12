@@ -2,11 +2,11 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { createObserveModule } from "@nestjs/observe";
+import { validateEnv, type Env } from "./config/env.config.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { BehavioralAssessmentModule } from "./modules/behavioral-assessment/behavioral-assessment.module.js";
 import { EmployeeModule } from "./modules/employees/employees.module.js";
 import { User } from "./modules/auth/entities/user.entity.js";
-import { Employee } from "./modules/auth/entities/employee.entity.js";
 import { EmployeeDomain } from "./modules/employees/entities/employee-domain.entity.js";
 import { BehavioralTemplate } from "./modules/behavioral-assessment/entities/behavioral-template.entity.js";
 import { BehavioralTemplateVersion } from "./modules/behavioral-assessment/entities/behavioral-template-version.entity.js";
@@ -25,19 +25,19 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
 
     // MAIN DATABASE (postgres)
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
+      useFactory: (config: ConfigService<Env, true>) => ({
         type: "postgres",
         autoLoadEntities: true,
-        host: config.get<string>("POSTGRES_HOST", "localhost"),
-        port: config.get<number>("POSTGRES_PORT", 5433),
-        database: config.get<string>("POSTGRES_DB", "postgres"),
-        username: config.get<string>("POSTGRES_USER", "postgres"),
-        password: config.get<string>("POSTGRES_PASSWORD", ""),
+        host: config.get("POSTGRES_HOST", { infer: true }),
+        port: config.get("POSTGRES_PORT", { infer: true }),
+        database: config.get("POSTGRES_DB", { infer: true }),
+        username: config.get("POSTGRES_USER", { infer: true }),
+        password: config.get("POSTGRES_PASSWORD", { infer: true }),
         entities: [
           User,
           EmployeeDomain,
@@ -62,34 +62,21 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       imports: [ConfigModule],
       inject: [ConfigService],
       name: "secondaryDB",
-      useFactory: (config: ConfigService) => {
-        const connectTimeout = Number(config.get("DB_CONNECTION_TIMEOUT", "30000"));
-
-        const requestTimeout = Number(config.get("DB_REQUEST_TIMEOUT", "30000"));
-
-        const host = config.get<string>("DB_HOST");
-        const username = config.get<string>("DB_USERNAME");
-        const password = config.get<string>("DB_PASSWORD");
-        const database = config.get<string>("DB_DATABASE");
-
-        if (!host || !username || !password || !database) {
-          throw new Error("Missing required MSSQL environment variables");
-        }
-
-        if (!Number.isFinite(connectTimeout) || !Number.isFinite(requestTimeout)) {
-          throw new Error("Invalid MSSQL timeout configuration");
-        }
+      // The required variables and the timeouts are checked in config/env.config.ts.
+      useFactory: (config: ConfigService<Env, true>) => {
+        const connectTimeout = config.get("DB_CONNECTION_TIMEOUT", { infer: true });
+        const requestTimeout = config.get("DB_REQUEST_TIMEOUT", { infer: true });
 
         return {
           type: "mssql" as const,
-          host,
-          port: Number(config.get("DB_PORT", "1433")),
-          username,
-          password,
-          database,
+          host: config.get("DB_HOST", { infer: true }),
+          port: config.get("DB_PORT", { infer: true }),
+          username: config.get("DB_USERNAME", { infer: true }),
+          password: config.get("DB_PASSWORD", { infer: true }),
+          database: config.get("DB_DATABASE", { infer: true }),
           options: {
-            encrypt: config.get<string>("DB_ENCRYPT") === "true",
-            trustServerCertificate: config.get<string>("DB_TRUST_SERVER_CERTIFICATE") === "true",
+            encrypt: config.get("DB_ENCRYPT", { infer: true }) === "true",
+            trustServerCertificate: config.get("DB_TRUST_SERVER_CERTIFICATE", { infer: true }) === "true",
             connectTimeout,
             requestTimeout,
           },

@@ -8,7 +8,7 @@ import { User } from "../entities/user.entity.js";
 import { Employee } from "../entities/employee.entity.js";
 import { HREmployee, HRUser } from "../entities/hrdotnet.entity.js";
 
-type MockRepo<T> = {
+type MockRepo<_Entity> = {
   findOne: ReturnType<typeof vi.fn>;
   create: ReturnType<typeof vi.fn>;
   save: ReturnType<typeof vi.fn>;

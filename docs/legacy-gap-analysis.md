@@ -110,5 +110,4 @@ Need: `ProfileDialog`, `SettingsDialog`, `LogoutDialog`, `ThemeToggle`, `Company
 
 ## 6. Notes
 
-- `structure-sample.md` in the repo root describes a different project (Vetted Studio, NestJS). Ignore or delete; it does not match pms-fe.
 - Legacy "role" nav differs from pms-fe: legacy Manager has Review Cycles and Reports, pms-fe Manager has neither Cycles nor Templates. Confirm intended access before building cycle pages for managers.

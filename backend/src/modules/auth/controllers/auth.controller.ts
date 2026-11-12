@@ -9,13 +9,14 @@ import {
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import type { Request } from "express";
-import { AuthService } from "./services/auth.service.js";
-import { LoginDto } from "./dtos/login.dto.js";
-import { SignUpDto, RegisterDto } from "./dtos/sign-up.dto.js";
-import { RefreshTokenDto } from "./dtos/refresh-token.dto.js";
-import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
-import { AuthResponseDto, AuthUserDto } from "./dtos/auth-response.dto.js";
-import { ApiErrorNotFoundResponse, ApiErrorResponseDto } from "./dtos/api-response.dto.js";
+import { AuthService } from "../services/auth.service.js";
+import { LoginDto } from "../dtos/login.dto.js";
+import { SignUpDto } from "../dtos/sign-up.dto.js";
+import { RegisterDto } from "../dtos/register.dto.js";
+import { RefreshTokenDto } from "../dtos/refresh-token.dto.js";
+import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard.js";
+import { AuthResponseDto, AuthUserDto } from "../dtos/auth-response.dto.js";
+import { ApiErrorNotFoundResponse, ApiErrorResponseDto } from "../../../common/dtos/api-response.dto.js";
 
 @ApiTags("Authentication")
 @Controller("auth")

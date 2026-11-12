@@ -14,7 +14,6 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
-  ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -22,15 +21,12 @@ import {
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import type { Request } from "express";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
-import { ApiErrorResponseDto } from "../auth/dtos/api-response.dto.js";
-import { CreateBehavioralTemplateDto, UpdateBehavioralTemplateDto } from "./dtos/behavioral-template.dto.js";
-import { BehavioralTemplate } from "./entities/behavioral-template.entity.js";
-import { BehavioralTemplateVersion } from "./entities/behavioral-template-version.entity.js";
-import { BehavioralSection } from "./entities/behavioral-section.entity.js";
-import { BehavioralQuestion } from "./entities/behavioral-question.entity.js";
-import { BehavioralChoiceOption } from "./entities/behavioral-choice-option.entity.js";
-import { BehavioralAssessmentService } from "./services/behavioral-assessment.service.js";
+import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard.js";
+import { ApiErrorResponseDto } from "../../../common/dtos/api-response.dto.js";
+import { CreateBehavioralTemplateDto } from "../dtos/create-behavioral-template.dto.js";
+import { UpdateBehavioralTemplateDto } from "../dtos/update-behavioral-template.dto.js";
+import { BehavioralTemplate } from "../entities/behavioral-template.entity.js";
+import { BehavioralAssessmentService } from "../services/behavioral-assessment.service.js";
 
 @ApiTags("Behavioral Assessment")
 @Controller("behavioral-assessment")

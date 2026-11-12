@@ -12,20 +12,10 @@ import { BehavioralTemplateVersion } from '../entities/behavioral-template-versi
 import { BehavioralSection } from '../entities/behavioral-section.entity.js';
 import { BehavioralQuestion } from '../entities/behavioral-question.entity.js';
 import { BehavioralChoiceOption } from '../entities/behavioral-choice-option.entity.js';
-import {
-  CreateBehavioralTemplateDto,
-  QuestionDto,
-  SectionDto,
-  UpdateBehavioralTemplateDto,
-} from '../dtos/behavioral-template.dto.js';
-
-export interface TemplateTree {
-  template: BehavioralTemplate;
-  version: BehavioralTemplateVersion | null;
-  sections: BehavioralSection[];
-  questions: BehavioralQuestion[];
-  options: BehavioralChoiceOption[];
-}
+import { CreateBehavioralTemplateDto } from '../dtos/create-behavioral-template.dto.js';
+import { QuestionDto, SectionDto } from '../dtos/behavioral-section.dto.js';
+import { UpdateBehavioralTemplateDto } from '../dtos/update-behavioral-template.dto.js';
+import type { TemplateTree } from '../types/template-tree.types.js';
 
 @Injectable()
 export class BehavioralAssessmentService {
