@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -8,6 +9,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Request,
   UseGuards,
 } from "@nestjs/common";
@@ -19,6 +21,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
@@ -30,6 +33,12 @@ import { User } from "../../auth/entities/user.entity.js";
 import { EmployeeService } from "../services/employee.service.js";
 import { AdminRoleGuard } from "../guards/admin-role.guard.js";
 import { CreateEmployeeDto } from "../dtos/create-employee.dto.js";
+import { EmployeePageDto } from "../dtos/employee-page.dto.js";
+import {
+  DEFAULT_EMPLOYEE_PAGE_SIZE,
+  listEmployeesQuerySchema,
+  MAX_EMPLOYEE_PAGE_SIZE,
+} from "../dtos/list-employees-query.dto.js";
 import { UpdateEmployeeDto } from "../dtos/update-employee.dto.js";
 import { EmployeeDomain } from "../entities/employee-domain.entity.js";
 import type { AuthedUser } from "../types/authed-user.types.js";
@@ -46,14 +55,25 @@ export class EmployeeController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: "list all employee records" })
+  @ApiOperation({ summary: "list employee records by page" })
+  @ApiQuery({ name: "page", required: false, schema: { type: "integer", minimum: 1, default: 1 } })
+  @ApiQuery({
+    name: "pageSize",
+    required: false,
+    schema: { type: "integer", minimum: 1, maximum: MAX_EMPLOYEE_PAGE_SIZE, default: DEFAULT_EMPLOYEE_PAGE_SIZE },
+  })
   @ApiOkResponse({
     description: "List of Employees",
-    type: [EmployeeDomain],
+    type: EmployeePageDto,
   })
+  @ApiBadRequestResponse({ description: "Invalid pagination query", type: ApiErrorResponseDto })
   @ApiUnauthorizedResponse({ description: "Unauthorized", type: ApiErrorResponseDto })
-  async findAll() {
-    return this.employees.findAll();
+  async findAll(@Query() query: Record<string, unknown>) {
+    const result = listEmployeesQuerySchema.safeParse(query);
+    if (!result.success) {
+      throw new BadRequestException(result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`));
+    }
+    return this.employees.findAll(result.data);
   }
 
   @Get(":id")

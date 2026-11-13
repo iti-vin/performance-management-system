@@ -2,9 +2,8 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from "@
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "../../auth/entities/user.entity.js";
+import { ADMIN_ROLE_ID } from "../../auth/entities/user-role.entity.js";
 import { EmployeeService } from "../services/employee.service.js";
-
-const ADMIN_ROLE_ID = "1";
 
 @Injectable()
 export class AdminRoleGuard implements CanActivate {

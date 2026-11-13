@@ -18,7 +18,7 @@ describe("EmployeeService", () => {
     create: vi.fn(),
     save: vi.fn(),
     findOne: vi.fn(),
-    find: vi.fn(),
+    findAndCount: vi.fn(),
   });
 
   beforeEach(async () => {
@@ -188,8 +188,8 @@ describe("EmployeeService", () => {
   });
 
   describe("findAll", () => {
-    it("should return all rows with the safe subset of fields", async () => {
-      const row = {
+    it("returns a page with the total count and the public employee fields", async () => {
+      const row: EmployeeDomain = {
         id: "1",
         guid: "aaaa-bbbb-cccc-dddd-eeee",
         employeeCode: "EMP-001",
@@ -198,28 +198,50 @@ describe("EmployeeService", () => {
         lastName: "Dela Cruz",
         hrdotnetId: "789",
         userRoleId: "2",
-        status: "active",
+        status: EmployeeStatus.ACTIVE,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      vi.spyOn(repository, "find").mockResolvedValue([row] as unknown as EmployeeDomain[]);
+      vi.spyOn(repository, "findAndCount").mockResolvedValue([[row], 41]);
 
-      const result = await service.findAll();
+      const result = await service.findAll({ page: 3, pageSize: 20 });
 
-      expect(result).toEqual([
-        expect.objectContaining({
-          id: "1",
-          guid: row.guid,
-          employeeCode: row.employeeCode,
-          email: row.email,
-          firstName: row.firstName,
-          lastName: row.lastName,
-          status: row.status,
-        }),
-      ]);
-      expect(result[0]).not.toHaveProperty("userRoleId");
-      expect(result[0]).not.toHaveProperty("hrdotnetId");
+      expect(repository.findAndCount).toHaveBeenCalledWith({ order: { id: "ASC" }, skip: 40, take: 20 });
+      expect(result).toEqual({
+        items: [
+          expect.objectContaining({
+            id: "1",
+            guid: row.guid,
+            employeeCode: row.employeeCode,
+            email: row.email,
+            firstName: row.firstName,
+            lastName: row.lastName,
+            status: row.status,
+          }),
+        ],
+        page: 3,
+        pageSize: 20,
+        pageCount: 3,
+        total: 41,
+      });
+      expect(result.items[0]).not.toHaveProperty("userRoleId");
+      expect(result.items[0]).not.toHaveProperty("hrdotnetId");
+    });
+
+    it.each([
+      { page: 1, total: 0, pageCount: 0 },
+      { page: 3, total: 22, pageCount: 2 },
+    ])("returns empty items on page $page with $total employees", async ({ page, total, pageCount }) => {
+      vi.spyOn(repository, "findAndCount").mockResolvedValue([[], total]);
+
+      await expect(service.findAll({ page, pageSize: 20 })).resolves.toEqual({
+        items: [],
+        page,
+        pageSize: 20,
+        pageCount,
+        total,
+      });
     });
   });
 });
