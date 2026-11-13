@@ -8,76 +8,23 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-<!-- sauron:start (managed by Sauron; edit outside this block) -->
-<!--
-  AGENTS.md: shared agent instructions standard (https://agents.md).
-  Read by Codex, Cursor, GitHub Copilot, Windsurf, Cline, OpenCode, Kiro, Zed, CodeBuddy, Pi, and omp.
--->
-
-# AGENTS.md
-
-> Governed by Sauron v1.0.0. Shared instructions for every AGENTS.md-aware coding agent.
-
-## Project Overview
-
-Production codebase governed by Sauron Universal Agent Harness.
-
-## Essential Commands
-
-- Build: `npm run build`
-- Test All: `npm test`
-- Typecheck: `npx tsc --noEmit`
-
-## Engineering Rules
-
-- Present tense, active voice, English language exclusively.
-- Zero emojis across all code files, comments, and commit messages.
-- Prohibit Latin abbreviations: use 'for example', 'that is', 'and so forth'.
-- Prohibit em dashes: use colons, parentheses, or separate sentences.
-- Strict Red-Green-Refactor TDD required before touching production code.
-- Zero untyped boundary parameters: enforce runtime validation (Zod, Pydantic).
-- Zero hardcoded secrets, connection strings, or unredacted logging output.
-- Token Conservation & Caveman Mode: active at tier 'ultra' from the first reply, no trigger needed. Preserve all code, commands, paths, and negations verbatim. Disable with '/caveman off'.
-
-## Token Optimization & Caveman Mode
-
-- Default: ACTIVE at tier `ultra` from the first reply of every session. No trigger command is needed.
-- Tier `ultra`: Maximum compression: fragments, common abbreviations, arrows for cause and effect. One word when one word is enough.
-- Never compress code blocks, diffs, commands, file paths, URLs, error messages, or quoted text. Copy them verbatim.
-- Never drop negations (`not`, `never`, `no`). Compression must not flip meaning.
-- Use normal prose for security warnings and confirmations of irreversible actions.
-- Switch tiers on request: `/caveman lite`, `/caveman full`, `/caveman ultra`. Disable with `/caveman off`.
-
-## Fellowship Sub-Agents
-
-- **Elessar** (`/aragorn`): Principal System Architect
-- **Shield of Gondor** (`/boromir`): Security Auditor and Shield
-- **Ringbearer** (`/frodo`): Core Task Executor
-- **Mithrandir** (`/gandalf`): Master Planner and Strategy Guide
-- **Lockbearer** (`/gimli`): Refactorer and AST Dead Code Slasher
-- **Greenleaf** (`/legolas`): Precision Linter and Syntax Bug Hunter
-- **Brandir** (`/merry`): QA and TDD Specialist
-- **Took** (`/pippin`): Edge Case and Chaos Prober
-- **The Brave** (`/samwise`): Git Commits and State Keeper
-
-## Anti-Pattern Guardrails
-
-- AP-1 (Vague task verb) : Always decompose requests into concrete atomic tasks.
-- AP-6 (Monolithic prompt) : Never combine architecture, code, and test in one step.
-- AP-14 (Leaking secrets) : Zero credentials in version control.
-- AP-17 (Skipping tests) : Code without a prior failing test is unverified code.
-- AP-18 (Non-atomic commit) : One logical concern per commit.
-- AP-52 (Fake fix) : Masking errors with type casts or empty catch blocks is prohibited.
-- Full catalog: see `.agents/anti-patterns.md` before planning non-trivial work.
-
-## Skills
-
-- Shared Agent Skills live in `.agents/skills/<name>/SKILL.md`. See `.agents/skills/README.md`.
-<!-- sauron:end -->
-
 ## Web
 
-The root `AGENTS.md` applies here too, including the always-on lean code rule. This section replaces the npm commands in the Sauron block above, because the repository uses pnpm.
+The root instructions apply to this workspace.
+
+## Next.js and React
+
+- Use `nextjs-principles` and `react-principles` for framework changes when available. Keep Server Components by default and add client boundaries where interactivity requires them.
+- Keep feature HTTP requests in the feature API layer, validation and session handling in services, and React-dependent behavior in feature hooks when it has a clear responsibility.
+- Reuse existing UI primitives and feature components before creating new ones.
+
+## Forms and accessibility
+
+- Use `forms-validation` for form changes when available. Label every input, validate drafts with shared contracts where applicable, and map backend field errors to their inputs. Show unmatched errors at form level.
+- Preserve keyboard operation, visible focus, touch targets, and accessible error messages.
+- For auth forms, verify successful submission and rejected credentials. Check that field errors stay linked to their inputs and that protected pages still rely on backend authorization.
+
+## Commands and integration
 
 - Dev: `pnpm dev` (or `pnpm dev:web` from the root). Build: `pnpm build`. Lint: `pnpm lint`. Test: `pnpm test`. Typecheck: `pnpm typecheck` (runs `next typegen` first).
 - Env: copy `.env.example` to `.env.local`. `PMS_API_BASE_URL` is the backend URL (`http://localhost:4000/`).
@@ -91,6 +38,8 @@ The root `AGENTS.md` applies here too, including the always-on lean code rule. T
 - Read [llm.txt](llm.txt) before you add or change a file in a folder. It holds the rules of every folder in `web/`, one section per folder.
 
 ## Design System
+
+- Use `design-engineering` and `ui-ux-principles` for UI changes when available. Verify relevant viewport sizes, themes, and interaction states.
 
 - Read [DESIGN.md](DESIGN.md) before you write or change any UI. It records the color, type, layout, surface, motion, and icon tokens, and the contrast proof.
 - The token files are `src/styles/*.css` and `src/app/globals.css`. If `DESIGN.md` and the CSS differ, the CSS wins, and `DESIGN.md` is corrected.

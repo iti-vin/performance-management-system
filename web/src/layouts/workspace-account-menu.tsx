@@ -1,20 +1,20 @@
 "use client";
 
 import { Menu } from "@base-ui/react/menu";
-import { Check, ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
+import { TZDate } from "@date-fns/tz";
+import { format } from "date-fns";
+import { ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
+import { useState } from "react";
+import { ConfirmationDialog } from "@/components/molecules/confirmation-dialog";
 import { ThemeToggle } from "@/components/molecules/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { WORKSPACE_ROLE_LABELS } from "@/constants/workspace-navigation";
-import type { WorkspaceRole } from "@/types/role";
-
-const PREVIEW_ROLES: readonly WorkspaceRole[] = ["employee", "manager", "hr"];
+import { WORKSPACE_TIME_ZONE } from "@/layouts/workspace-clock";
 
 interface WorkspaceAccountMenuProps {
   name: string;
   firstName: string;
-  role: WorkspaceRole;
-  onPreviewRoleChange: (role: WorkspaceRole) => void;
+  email?: string | null;
   placement?: "header" | "sidebar";
   avatarSrc?: string;
   onProfile?: () => void;
@@ -28,14 +28,15 @@ const itemClass =
 export function WorkspaceAccountMenu({
   name,
   firstName,
-  role,
-  onPreviewRoleChange,
+  email,
   placement = "header",
   avatarSrc,
   onProfile,
   onAccountSettings,
   onLogout,
 }: WorkspaceAccountMenuProps) {
+  const [today, setToday] = useState<TZDate | null>(null);
+  const [isLogoutConfirmationOpen, setIsLogoutConfirmationOpen] = useState(false);
   const initials = name
     .trim()
     .split(/\s+/)
@@ -49,17 +50,20 @@ export function WorkspaceAccountMenu({
       <AvatarFallback className="text-pms-label">{initials}</AvatarFallback>
     </Avatar>
   );
-  const identity = (
-    <span className="grid min-w-0 text-start">
-      <span className="truncate text-pms-label font-semibold">{name}</span>
-      <span className="truncate text-pms-label text-muted-foreground">
-        {WORKSPACE_ROLE_LABELS[role]}
-      </span>
-    </span>
-  );
+
+  function confirmLogout() {
+    setIsLogoutConfirmationOpen(false);
+    onLogout?.();
+  }
 
   return (
-    <Menu.Root>
+    <Menu.Root
+      onOpenChange={(open) => {
+        if (open && placement === "sidebar") {
+          setToday(new TZDate(Date.now(), WORKSPACE_TIME_ZONE));
+        }
+      }}
+    >
       <Menu.Trigger
         aria-label={`Account menu for ${name}`}
         render={
@@ -90,35 +94,34 @@ export function WorkspaceAccountMenu({
         >
           <Menu.Popup
             aria-label="Account actions"
-            className="w-56 max-w-(--available-width) rounded-pms-overlay border border-border bg-popover p-1 text-popover-foreground shadow-pms-float"
+            className="w-56 max-w-(--available-width) origin-(--transform-origin) rounded-pms-overlay border border-border bg-popover p-1 text-popover-foreground shadow-pms-float duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-open:ease-out data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-closed:ease-in motion-reduce:animate-none"
           >
-            <div className="flex min-w-0 items-center gap-2 px-2 py-2">
-              {avatar}
-              {identity}
+            <div className="grid min-w-0 px-2 py-2 text-start">
+              <span className="wrap-break-word text-pms-label font-semibold">
+                {name}
+              </span>
+              {email && (
+                <span className="wrap-break-word text-pms-label font-normal text-muted-foreground">
+                  {email}
+                </span>
+              )}
             </div>
-            <Menu.Separator className="my-1 border-t border-border" />
-            <p className="px-2 py-1 text-pms-label text-muted-foreground">
-              Preview as user type
-            </p>
-            <Menu.RadioGroup value={role} aria-label="Preview as user type">
-              {PREVIEW_ROLES.map((previewRole) => (
-                <Menu.RadioItem
-                  key={previewRole}
-                  value={previewRole}
-                  closeOnClick
-                  className={itemClass + " justify-between"}
-                  onClick={() => onPreviewRoleChange(previewRole)}
-                >
-                  {WORKSPACE_ROLE_LABELS[previewRole]}
-                  <Menu.RadioItemIndicator>
-                    <Check
-                      aria-hidden="true"
-                      className="size-pms-icon-inline"
-                    />
-                  </Menu.RadioItemIndicator>
-                </Menu.RadioItem>
-              ))}
-            </Menu.RadioGroup>
+            {placement === "sidebar" && today && (
+              <>
+                <Menu.Separator className="my-1 border-t border-border" />
+                <div className="grid px-2 py-2 text-start">
+                  <span className="text-pms-label font-normal text-muted-foreground">
+                    Today
+                  </span>
+                  <time
+                    dateTime={format(today, "yyyy-MM-dd")}
+                    className="text-pms-table font-semibold"
+                  >
+                    {format(today, "EEEE, MMM d")}
+                  </time>
+                </div>
+              </>
+            )}
             <Menu.Separator className="my-1 border-t border-border" />
             <div className="flex min-h-pms-touch items-center justify-between gap-2 px-2 text-pms-label">
               Theme
@@ -145,7 +148,7 @@ export function WorkspaceAccountMenu({
             <Menu.Item
               className={itemClass}
               disabled={!onLogout}
-              onClick={onLogout}
+              onClick={() => setIsLogoutConfirmationOpen(true)}
             >
               <LogOut aria-hidden="true" className="size-pms-icon-inline" />
               Log out
@@ -153,6 +156,14 @@ export function WorkspaceAccountMenu({
           </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>
+      <ConfirmationDialog
+        open={isLogoutConfirmationOpen}
+        title="Log out?"
+        description="You’ll need to log in again to access your workspace."
+        confirmLabel="Log out"
+        onClose={() => setIsLogoutConfirmationOpen(false)}
+        onConfirm={confirmLogout}
+      />
     </Menu.Root>
   );
 }

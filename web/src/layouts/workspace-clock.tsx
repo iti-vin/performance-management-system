@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 
-const TIME_ZONE = "Asia/Manila";
+export const WORKSPACE_TIME_ZONE = "Asia/Manila";
 const MINUTE_MS = 60_000;
 
 export function WorkspaceClock() {
@@ -33,7 +33,7 @@ export function WorkspaceClock() {
       {now ? (
         <time dateTime={now.toISOString()}>
           {format(
-            new TZDate(now.getTime(), TIME_ZONE),
+            new TZDate(now.getTime(), WORKSPACE_TIME_ZONE),
             "EEEE, MMMM dd, yyyy '|' h:mm a",
           )}
         </time>

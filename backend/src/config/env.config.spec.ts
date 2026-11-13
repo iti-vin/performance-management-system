@@ -7,6 +7,7 @@ const requiredEnv = (overrides: Record<string, unknown> = {}): Record<string, un
   DB_DATABASE: "hr",
   DB_USERNAME: "reader",
   DB_PASSWORD: "example-password",
+  JWT_ACCESS_SECRET: "test-only-signing-key",
   ...overrides,
 });
 
@@ -43,7 +44,7 @@ describe("validateEnv", () => {
     expect(() => validateEnv(requiredEnv({ DB_REQUEST_TIMEOUT: "soon" }))).toThrow("DB_REQUEST_TIMEOUT");
   });
 
-  it("leaves the JWT secret optional, as the auth module still has its own fallback", () => {
-    expect(validateEnv(requiredEnv()).JWT_ACCESS_SECRET).toBeUndefined();
+  it.each([undefined, "", "   "])("rejects a missing or blank JWT secret (%j)", (secret) => {
+    expect(() => validateEnv(requiredEnv({ JWT_ACCESS_SECRET: secret }))).toThrow("JWT_ACCESS_SECRET");
   });
 });

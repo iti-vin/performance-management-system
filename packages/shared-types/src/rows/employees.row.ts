@@ -5,7 +5,7 @@ import { employeeStatusSchema } from "../domain/employee-status.enum.js";
 
 /** One row of pms.employees. */
 export const employeesRowSchema = z.object({
-  guid: idSchema,
+  guid: idSchema.nullable(),
   id: bigintIdSchema,
   code: z.string(),
   email: z.string(),

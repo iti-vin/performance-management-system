@@ -1,64 +1,50 @@
 # PostgreSQL schema and seed
 
+The module SQL follows the workflow model in [Database Design](../../docs/database-design.md) and [Database Schema](../../docs/database-schema.md). The [Workspace Blueprint](../../docs/workspace-blueprint.md) records the open ownership decision between these SQL files and the backend TypeORM entities.
+
 ## Layout
 
-- `packages/database/schema.sql` - DDL. Creates schema `pms` and all tables. Idempotent (`IF NOT EXISTS` style).
-- `packages/database/seed.sql` - Sample data. Idempotent (`ON CONFLICT DO NOTHING`).
-- `packages/database/init-db.mjs` - Standalone script. Creates the database if it does not exist, then applies schema + seed.
+- `schema.sql` creates the PMS schema and lists the files in `schema/` in foreign-key dependency order. Edit the owning module file for table and constraint changes.
+- `seed.sql` lists the matching development fixture files under `seeds/`. Fixtures use stable identifiers and omit login accounts.
+- `init-db.mjs` creates the target database if needed and applies schema and seed. The shared row generator reads the same schema module list.
+- `reference/identity.sql` is a reference draft for the public identity schema. The package initializer skips it.
 
-## Automatic schema evolution
+## Workflow ownership
 
-`schema.sql` is safe to re-run against an existing database. Every `CREATE TABLE`
-uses `IF NOT EXISTS`, followed by a block of `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
-and `ADD CONSTRAINT IF NOT EXISTS` statements. Re-running the file automatically:
+| PRD workflow                                  | SQL module                                                               | What it owns                                                  |
+| --------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| KPI and behavioral templates (4–5)            | `kpi-goals.sql`, `behavioral-assessments.sql`                            | Template versions and the configuration that reviews freeze   |
+| Review cycle (6)                              | `review-cycles.sql`                                                      | Schedule, component weights, participants, and stages         |
+| KPI accomplishments (7)                       | `kpi-accomplishments.sql`                                                | One current actual per indicator and the correction history   |
+| Evaluator work (8)                            | `evaluator-assignments.sql`                                              | Assignments, stage references, and response versions          |
+| Results (9)                                   | `evaluation-results.sql`                                                 | Frozen evidence, scores, finalization, and release            |
+| Directory and manager changes (10, 14)        | `identity-and-directory.sql`, `employees.sql`, `manager-assignments.sql` | Directory records and effective-dated reporting changes       |
+| 202 Files and PIP (11–12)                     | `202-files.sql`, `pip.sql`                                               | Notices, receipts, plans, weekly work, and assessment history |
+| Notifications, goals, and audit (2.7, 13, 15) | `notifications.sql`, `operational-goals.sql`, `audit.sql`                | Messages, milestones, progress history, and audit evidence    |
 
-- adds new columns and constraints defined in the file
-- leaves already-present columns untouched (no-op)
-- does not drop columns automatically
+API requests follow the shared contracts. Services enforce role and company scope, stage readiness, schedule eligibility, and cross-record workflow rules. SQL enforces keys and row-level invariants. For example, result release needs a finalization timestamp and the cycle component weights must total 100 percent.
 
-To propagate a **removed** column, add a matching line to the evolution block
-at the bottom of `schema.sql`:
+## Apply to an isolated development database
 
-```sql
-ALTER TABLE pms.<table> DROP COLUMN IF EXISTS <column>;
+Set the PostgreSQL connection variables, including an explicit `POSTGRES_DB` for the development target. The initializer applies the development fixtures automatically.
+
+```sh
+pnpm --filter @pms/database db:init
 ```
 
-New NOT NULL columns with no DEFAULT require a one-time backfill before
-re-running so existing rows are not left with a NULL violation:
+To run the files with psql, connect to an existing development database and use these commands from the repository root.
 
-```sql
-UPDATE pms.<table> SET <column> = '<value>' WHERE <column> IS NULL;
+```sh
+psql -v ON_ERROR_STOP=1 -f packages/database/schema.sql
+psql -v ON_ERROR_STOP=1 -f packages/database/seed.sql
 ```
 
-## Auto-bootstrap on app start
+Use `pnpm --filter @pms/database test` to verify the module layout and `pnpm --filter @pms/shared-types generate:check` to check generated row types.
 
-`src/database/database-bootstrap.module.ts` is imported by `AppModule`.
-On every `nest start` it:
+## Existing databases and known differences
 
-1. Connects to PostgreSQL using `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD` env vars (defaults: `localhost:5433/postgres`).
-2. Creates the target database (`POSTGRES_DB`, default `postgres`) if it does not exist.
-3. Runs `packages/database/schema.sql` against that database.
-4. Runs `packages/database/seed.sql` against that database.
+Each entry point runs in its own transaction. `CREATE TABLE IF NOT EXISTS` skips existing tables. Use explicit migrations to change existing columns, constraints, or indexes. Keep demo fixtures in an isolated database because their fixed IDs can overlap with existing rows.
 
-The bootstrap logs progress and continues to `app.listen` after seeding.
+The logical docs describe UUID directory keys. The current SQL uses bigint keys for companies, departments, positions, and the employee record, with a nullable unique employee GUID for workflow references. Confirm the intended mapping with the backend owner before migrating existing data.
 
-## Manual application
-
-```bash
-# Create database + apply schema + seed
-node packages/database/init-db.mjs
-
-# Or with psql
-psql -h localhost -p 5433 -U postgres -d postgres \
-  -c 'CREATE DATABASE pms;'
-psql -h localhost -p 5433 -U postgres -d pms \
-  -v ON_ERROR_STOP=1 -f packages/database/schema.sql
-psql -h localhost -p 5433 -U postgres -d pms \
-  -v ON_ERROR_STOP=1 -f packages/database/seed.sql
-```
-
-## Notes
-
-- `seed.sql` is sample data only. Do not use in production.
-- `schema.sql` is a preliminary domain model, not a production migration.
-- The NestJS backend is configured for PostgreSQL via TypeORM in `app.module.ts`.
+The NestJS backend currently uses TypeORM synchronization on its main connection. Its user entity expects a bigint ID, employee and role IDs, and `password_hash`. The standalone `schema/users.sql` defines the legacy UUID-based shape with `password`. Use the standalone bootstrap for domain fixtures until the team reconciles the public identity schema and migration ownership. Audit history immutability and additional foreign-key indexes also need production verification.

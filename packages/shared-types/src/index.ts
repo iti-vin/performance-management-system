@@ -2,6 +2,7 @@ export * from "./common.js";
 export * from "./domain/index.js";
 export * from "./dtos/auth.schema.js";
 export * from "./dtos/behavioral-template.schema.js";
+export * from "./dtos/error.schema.js";
 export * from "./dtos/evaluation.schema.js";
 export * from "./dtos/evidence-file.schema.js";
 export * from "./dtos/goal-template.schema.js";

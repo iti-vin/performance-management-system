@@ -17,11 +17,7 @@
  */
 
 import { Client } from "pg";
-import { readFileSync, existsSync } from "node:fs";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
+import { readSchema, readSeed } from "./sql-files.mjs";
 
 const host = process.env.POSTGRES_HOST ?? "localhost";
 const port = Number(process.env.POSTGRES_PORT ?? 5433);
@@ -36,7 +32,10 @@ function connect(db = dbName) {
 async function ensureDatabase() {
   const admin = connect("postgres");
   await admin.connect();
-  const res = await admin.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dbName]);
+  const res = await admin.query(
+    `SELECT 1 FROM pg_database WHERE datname = $1`,
+    [dbName],
+  );
   if (res.rowCount === 0) {
     // CREATE DATABASE cannot run inside a transaction
     await admin.query(`CREATE DATABASE "${dbName.replace(/"/g, '""')}"`);
@@ -47,16 +46,12 @@ async function ensureDatabase() {
   await admin.end();
 }
 
-async function applySqlFile(filePath) {
-  if (!existsSync(filePath)) {
-    throw new Error(`SQL file not found: ${filePath}`);
-  }
-  const sql = readFileSync(filePath, "utf8");
+async function applySql(name, sql) {
   const client = connect();
   await client.connect();
   try {
     await client.query(sql);
-    console.log(`[init-db] applied ${filePath}`);
+    console.log(`[init-db] applied ${name}`);
   } finally {
     await client.end();
   }
@@ -66,11 +61,8 @@ async function main() {
   console.log(`[init-db] connecting to ${user}@${host}:${port}/${dbName}`);
   await ensureDatabase();
 
-  const schemaPath = resolve(__dirname, "schema.sql");
-  const seedPath = resolve(__dirname, "seed.sql");
-
-  await applySqlFile(schemaPath);
-  await applySqlFile(seedPath);
+  await applySql("schema.sql", readSchema());
+  await applySql("seed.sql", readSeed());
 
   console.log("[init-db] done");
 }

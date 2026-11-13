@@ -23,11 +23,11 @@ The current prototype's browser-local storage and role preview are not productio
 
 ## 3. Roles and access scope
 
-| Role | Permitted scope | Key restrictions |
-|---|---|---|
-| Employee | Own records, exact assigned evaluator work, own released result, own issued NTE and own PIP workflow | No access to other employees' records, manager/HR journals or another evaluator's response |
-| Manager | Current performance-management team in current company, plus exact assignments owned | Cannot edit another evaluator's response; cannot create, issue, cancel or resolve NTEs |
-| HR Administrator | Authorized organization/company scope | Administrative access and exceptional actions must be audited |
+| Role             | Permitted scope                                                                                      | Key restrictions                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Employee         | Own records, exact assigned evaluator work, own released result, own issued NTE and own PIP workflow | No access to other employees' records, manager/HR journals or another evaluator's response |
+| Manager          | Current performance-management team in current company, plus exact assignments owned                 | Cannot edit another evaluator's response; cannot create, issue, cancel or resolve NTEs     |
+| HR Administrator | Authorized organization/company scope                                                                | Administrative access and exceptional actions must be audited                              |
 
 Additional requirements:
 

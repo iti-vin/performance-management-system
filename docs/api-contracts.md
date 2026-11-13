@@ -70,12 +70,12 @@ The supplied PRD describes user workflows, roles, validations and acceptance beh
 
 ## 4. HTTP method semantics
 
-| Method | Intended use |
-|---|---|
-| `GET` | Read a resource or collection; no state mutation |
-| `POST` | Create a resource or execute a named workflow command |
-| `PATCH` | Partially update an editable resource |
-| `PUT` | Replace a resource only where full replacement is explicitly supported |
+| Method   | Intended use                                                             |
+| -------- | ------------------------------------------------------------------------ |
+| `GET`    | Read a resource or collection; no state mutation                         |
+| `POST`   | Create a resource or execute a named workflow command                    |
+| `PATCH`  | Partially update an editable resource                                    |
+| `PUT`    | Replace a resource only where full replacement is explicitly supported   |
 | `DELETE` | Avoid for business records; use archive/cancel lifecycle actions instead |
 
 Workflow transitions should use explicit action routes or command DTOs rather than allowing clients to set arbitrary `status` fields.
@@ -84,23 +84,23 @@ Workflow transitions should use explicit action routes or command DTOs rather th
 
 These routes are a suggested organization of PRD capabilities, not existing endpoints.
 
-| Resource | Proposed routes | Main actors |
-|---|---|---|
-| Authentication | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` | Authenticated users |
-| Employees | `GET /employees`, `GET /employees/:employeeId` | HR; Manager within team scope |
-| Manager assignments | `GET /manager-assignments`, `POST /manager-assignments`, `POST /manager-assignments/:id/cancel` | HR |
-| KPI templates | `GET/POST /kpi-templates`, `GET/PATCH /kpi-templates/:id`, `POST /kpi-templates/:id/publish`, `POST /kpi-templates/:id/archive` | HR |
-| Behavioral templates | `GET/POST /behavioral-templates`, `GET/PATCH /behavioral-templates/:id`, `POST /behavioral-templates/:id/publish`, `POST /behavioral-templates/:id/archive` | HR |
-| Cycles | `GET/POST /cycles`, `GET/PATCH /cycles/:id`, `POST /cycles/:id/validate`, `POST /cycles/:id/launch`, `POST /cycles/:id/schedule`, `POST /cycles/:id/cancel` | HR |
-| Accomplishments | `GET /cycles/:cycleId/accomplishments`, `GET /accomplishments/:id`, `PATCH /accomplishments/:id`, `POST /accomplishments/:id/submit`, `POST /accomplishments/:id/verify`, `POST /accomplishments/:id/return` | Employee, eligible Manager, HR per policy |
-| Evaluator assignments | `GET /assignments`, `GET /assignments/:id`, `PATCH /assignments/:id/response`, `POST /assignments/:id/submit`, `POST /assignments/:id/reopen` | Assigned evaluator; HR for reopen |
-| Evaluation results | `GET /cycles/:cycleId/results`, `GET /evaluation-snapshots/:id`, `POST /cycles/:cycleId/finalize`, `POST /cycles/:cycleId/release` | HR; scoped viewers |
-| Journals | `GET /journal-entries`, `POST /journal-entries`, `GET /journal-entries/:id` | HR/Manager within permitted scope |
-| NTE | `GET/POST /nte-notices`, `GET /nte-notices/:id`, `POST /nte-notices/:id/issue`, `POST /nte-notices/:id/respond`, `POST /nte-notices/:id/close`, `POST /nte-notices/:id/cancel`, `POST /nte-notices/:id/read` | HR; employee own response/read; Manager read-only team scope |
-| PIP | `GET/POST /pip-plans`, `GET/PATCH /pip-plans/:id`, `POST /pip-plans/:id/weeks`, `POST /pip-weeks/:id/updates`, `POST /pip-weeks/:id/assess`, `POST /pip-plans/:id/close`, `POST /pip-plans/:id/cancel` | HR, permitted Manager, employee own progress |
-| Operational goals | `GET/POST /operational-goals`, `GET/PATCH /operational-goals/:id`, `POST /operational-goals/:id/progress` | Employee, Manager, HR by scope |
-| Notifications | `GET /notifications`, `POST /notifications/:id/read`, `GET/PATCH /notification-preferences` | Recipient |
-| Reports | `GET /reports/...` | Manager/HR by report scope |
+| Resource              | Proposed routes                                                                                                                                                                                              | Main actors                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| Authentication        | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me`                                                                                                                                | Authenticated users                                          |
+| Employees             | `GET /employees`, `GET /employees/:employeeId`                                                                                                                                                               | HR; Manager within team scope                                |
+| Manager assignments   | `GET /manager-assignments`, `POST /manager-assignments`, `POST /manager-assignments/:id/cancel`                                                                                                              | HR                                                           |
+| KPI templates         | `GET/POST /kpi-templates`, `GET/PATCH /kpi-templates/:id`, `POST /kpi-templates/:id/publish`, `POST /kpi-templates/:id/archive`                                                                              | HR                                                           |
+| Behavioral templates  | `GET/POST /behavioral-templates`, `GET/PATCH /behavioral-templates/:id`, `POST /behavioral-templates/:id/publish`, `POST /behavioral-templates/:id/archive`                                                  | HR                                                           |
+| Cycles                | `GET/POST /cycles`, `GET/PATCH /cycles/:id`, `POST /cycles/:id/validate`, `POST /cycles/:id/launch`, `POST /cycles/:id/schedule`, `POST /cycles/:id/cancel`                                                  | HR                                                           |
+| Accomplishments       | `GET /cycles/:cycleId/accomplishments`, `GET /accomplishments/:id`, `PATCH /accomplishments/:id`, `POST /accomplishments/:id/submit`, `POST /accomplishments/:id/verify`, `POST /accomplishments/:id/return` | Employee, eligible Manager, HR per policy                    |
+| Evaluator assignments | `GET /assignments`, `GET /assignments/:id`, `PATCH /assignments/:id/response`, `POST /assignments/:id/submit`, `POST /assignments/:id/reopen`                                                                | Assigned evaluator; HR for reopen                            |
+| Evaluation results    | `GET /cycles/:cycleId/results`, `GET /evaluation-snapshots/:id`, `POST /cycles/:cycleId/finalize`, `POST /cycles/:cycleId/release`                                                                           | HR; scoped viewers                                           |
+| Journals              | `GET /journal-entries`, `POST /journal-entries`, `GET /journal-entries/:id`                                                                                                                                  | HR/Manager within permitted scope                            |
+| NTE                   | `GET/POST /nte-notices`, `GET /nte-notices/:id`, `POST /nte-notices/:id/issue`, `POST /nte-notices/:id/respond`, `POST /nte-notices/:id/close`, `POST /nte-notices/:id/cancel`, `POST /nte-notices/:id/read` | HR; employee own response/read; Manager read-only team scope |
+| PIP                   | `GET/POST /pip-plans`, `GET/PATCH /pip-plans/:id`, `POST /pip-plans/:id/weeks`, `POST /pip-weeks/:id/updates`, `POST /pip-weeks/:id/assess`, `POST /pip-plans/:id/close`, `POST /pip-plans/:id/cancel`       | HR, permitted Manager, employee own progress                 |
+| Operational goals     | `GET/POST /operational-goals`, `GET/PATCH /operational-goals/:id`, `POST /operational-goals/:id/progress`                                                                                                    | Employee, Manager, HR by scope                               |
+| Notifications         | `GET /notifications`, `POST /notifications/:id/read`, `GET/PATCH /notification-preferences`                                                                                                                  | Recipient                                                    |
+| Reports               | `GET /reports/...`                                                                                                                                                                                           | Manager/HR by report scope                                   |
 
 ## 6. Request contract examples
 
@@ -242,19 +242,19 @@ Do not accept arbitrary SQL column names or unbounded page sizes.
 
 ## 9. Authorization summary
 
-| Operation | Employee | Manager | HR Administrator |
-|---|---|---|---|
-| Read own released result | Yes | Own result if applicable | Authorized scope |
-| Read another employee result | No | Permitted team scope | Authorized scope |
-| Submit own KPI actual | Yes | Only if also the subject and policy permits | Administrative workflow only |
-| Verify accomplishment | No | Eligible current manager | As explicitly authorized |
-| Submit evaluator response | Exact assignment only | Exact assignment only | Not as another evaluator |
-| Reopen submitted assessment | No | No | Yes, with reason/impact confirmation |
-| Issue/close/cancel NTE | No | No | Yes |
-| Respond to own NTE | Yes, one response while open | No | Administrative access as approved |
-| Submit own PIP progress | Yes | No, unless also employee actor | Administrative workflow |
-| Assess team PIP week | No | Permitted team scope | Authorized scope |
-| Publish templates/finalize/release | No | No | Yes |
+| Operation                          | Employee                     | Manager                                     | HR Administrator                     |
+| ---------------------------------- | ---------------------------- | ------------------------------------------- | ------------------------------------ |
+| Read own released result           | Yes                          | Own result if applicable                    | Authorized scope                     |
+| Read another employee result       | No                           | Permitted team scope                        | Authorized scope                     |
+| Submit own KPI actual              | Yes                          | Only if also the subject and policy permits | Administrative workflow only         |
+| Verify accomplishment              | No                           | Eligible current manager                    | As explicitly authorized             |
+| Submit evaluator response          | Exact assignment only        | Exact assignment only                       | Not as another evaluator             |
+| Reopen submitted assessment        | No                           | No                                          | Yes, with reason/impact confirmation |
+| Issue/close/cancel NTE             | No                           | No                                          | Yes                                  |
+| Respond to own NTE                 | Yes, one response while open | No                                          | Administrative access as approved    |
+| Submit own PIP progress            | Yes                          | No, unless also employee actor              | Administrative workflow              |
+| Assess team PIP week               | No                           | Permitted team scope                        | Authorized scope                     |
+| Publish templates/finalize/release | No                           | No                                          | Yes                                  |
 
 ## 10. Contract versioning and compatibility
 

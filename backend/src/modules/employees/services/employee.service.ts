@@ -4,6 +4,8 @@ import { Repository } from "typeorm";
 import { randomUUID } from "node:crypto";
 import { EmployeeDomain } from "../entities/employee-domain.entity.js";
 import { CreateEmployeeDto } from "../dtos/create-employee.dto.js";
+import type { EmployeePageDto } from "../dtos/employee-page.dto.js";
+import type { ListEmployeesQueryDto } from "../dtos/list-employees-query.dto.js";
 import { EmployeeStatus } from "../types/employee-status.enum.js";
 import { UpdateEmployeeDto } from "../dtos/update-employee.dto.js";
 import { User } from "../../auth/entities/user.entity.js";
@@ -53,8 +55,18 @@ export class EmployeeService {
     return this.employees.findOne({ where: { id: user.employeeId } });
   }
 
-  async findAll(): Promise<Array<Partial<EmployeeDomain>>> {
-    const rows = await this.employees.find();
-    return rows.map(({ userRoleId: _userRoleId, hrdotnetId: _hrdotnetId, ...row }) => row);
+  async findAll({ page, pageSize }: ListEmployeesQueryDto): Promise<EmployeePageDto> {
+    const [rows, total] = await this.employees.findAndCount({
+      order: { id: "ASC" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return {
+      items: rows.map(({ userRoleId: _userRoleId, hrdotnetId: _hrdotnetId, ...row }) => row),
+      page,
+      pageSize,
+      pageCount: Math.ceil(total / pageSize),
+      total,
+    };
   }
 }

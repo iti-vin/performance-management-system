@@ -10,17 +10,17 @@ Errors must be actionable without disclosing restricted information. Validation 
 
 ## 2. Error categories
 
-| Category | Examples | Expected handling |
-|---|---|---|
-| Validation | Missing required field, negative KPI actual, invalid date order, invalid question answer | Reject request; identify field and correction |
-| Authentication | Missing, expired or invalid credentials | Return authentication failure without sensitive detail |
-| Authorization | Out-of-scope employee, company or assignment | Reject without confirming restricted resource details |
-| Not found | Unknown or inaccessible resource | Use a non-disclosing not-found response where needed |
-| Conflict | Invalid lifecycle transition, duplicate action, stale version | Return conflict; explain allowed next step |
-| Business rule | Incomplete cycle readiness, overlapping PIP weeks, missing return reason | Return stable business error code and actionable message |
-| Rate limit | Excessive requests | Return rate-limit response and retry guidance |
-| Dependency/technical | Database unavailable, worker failure, notification provider failure | Fail safely, log correlation ID, retry only when safe |
-| Unexpected | Unhandled application error | Generic response; full diagnostic details only in protected logs |
+| Category             | Examples                                                                                 | Expected handling                                                |
+| -------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Validation           | Missing required field, negative KPI actual, invalid date order, invalid question answer | Reject request; identify field and correction                    |
+| Authentication       | Missing, expired or invalid credentials                                                  | Return authentication failure without sensitive detail           |
+| Authorization        | Out-of-scope employee, company or assignment                                             | Reject without confirming restricted resource details            |
+| Not found            | Unknown or inaccessible resource                                                         | Use a non-disclosing not-found response where needed             |
+| Conflict             | Invalid lifecycle transition, duplicate action, stale version                            | Return conflict; explain allowed next step                       |
+| Business rule        | Incomplete cycle readiness, overlapping PIP weeks, missing return reason                 | Return stable business error code and actionable message         |
+| Rate limit           | Excessive requests                                                                       | Return rate-limit response and retry guidance                    |
+| Dependency/technical | Database unavailable, worker failure, notification provider failure                      | Fail safely, log correlation ID, retry only when safe            |
+| Unexpected           | Unhandled application error                                                              | Generic response; full diagnostic details only in protected logs |
 
 ## 3. API error envelope
 
@@ -48,17 +48,17 @@ Do not return stack traces, SQL text, secrets, token claims, internal hostnames 
 
 ## 4. HTTP status mapping
 
-| HTTP status | Use |
-|---|---|
-| `400 Bad Request` | Malformed request or invalid syntax |
-| `401 Unauthorized` | Missing or invalid authentication |
-| `403 Forbidden` | Authenticated caller lacks permission |
-| `404 Not Found` | Resource does not exist or must not be disclosed |
-| `409 Conflict` | Invalid state transition, duplicate command or stale version |
-| `422 Unprocessable Entity` | Structurally valid request that fails business validation |
-| `429 Too Many Requests` | Rate limit exceeded |
-| `500 Internal Server Error` | Unexpected server failure |
-| `503 Service Unavailable` | Temporarily unavailable service/dependency |
+| HTTP status                 | Use                                                          |
+| --------------------------- | ------------------------------------------------------------ |
+| `400 Bad Request`           | Malformed request or invalid syntax                          |
+| `401 Unauthorized`          | Missing or invalid authentication                            |
+| `403 Forbidden`             | Authenticated caller lacks permission                        |
+| `404 Not Found`             | Resource does not exist or must not be disclosed             |
+| `409 Conflict`              | Invalid state transition, duplicate command or stale version |
+| `422 Unprocessable Entity`  | Structurally valid request that fails business validation    |
+| `429 Too Many Requests`     | Rate limit exceeded                                          |
+| `500 Internal Server Error` | Unexpected server failure                                    |
+| `503 Service Unavailable`   | Temporarily unavailable service/dependency                   |
 
 Use one consistent mapping across modules. Do not return HTTP 200 for failed operations.
 
@@ -136,6 +136,7 @@ Examples:
 ## 12. User-facing messages
 
 Messages should state:
+
 1. What action failed.
 2. Which field or workflow condition needs attention.
 3. What the user can do next.

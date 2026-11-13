@@ -55,18 +55,18 @@ Keep controllers thin. Do not place scoring calculations, role scope rules, work
 
 ## 4. Naming conventions
 
-| Item | Convention | Example |
-|---|---|---|
-| Module directory | kebab-case | `manager-assignments/` |
-| File | kebab-case with role suffix | `auth.controller.ts` |
-| Class | PascalCase | `AuthService` |
-| Method/function | camelCase, verb-led | `releaseResults()` |
-| Variable/property | camelCase | `companyId` |
-| DTO class | PascalCase + purpose suffix | `CreateCycleDto` |
-| Entity class | PascalCase singular | `Employee` |
-| Database table/column | snake_case | `cycle_participants` |
-| Enum values | stable lowercase identifiers | `in_progress` |
-| Constants | descriptive; uppercase for true constants | `MAX_RETRY_COUNT` |
+| Item                  | Convention                                | Example                |
+| --------------------- | ----------------------------------------- | ---------------------- |
+| Module directory      | kebab-case                                | `manager-assignments/` |
+| File                  | kebab-case with role suffix               | `auth.controller.ts`   |
+| Class                 | PascalCase                                | `AuthService`          |
+| Method/function       | camelCase, verb-led                       | `releaseResults()`     |
+| Variable/property     | camelCase                                 | `companyId`            |
+| DTO class             | PascalCase + purpose suffix               | `CreateCycleDto`       |
+| Entity class          | PascalCase singular                       | `Employee`             |
+| Database table/column | snake_case                                | `cycle_participants`   |
+| Enum values           | stable lowercase identifiers              | `in_progress`          |
+| Constants             | descriptive; uppercase for true constants | `MAX_RETRY_COUNT`      |
 
 Use domain terms from the PRD consistently: `cycle`, `participant`, `assignment`, `accomplishment`, `evaluation snapshot`, `NTE`, `PIP`, `operational goal`.
 

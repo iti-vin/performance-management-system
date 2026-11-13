@@ -15,11 +15,11 @@ The PMS API: a NestJS 12 service with JWT authentication, employee records, KPI 
 | Method and path                                | Purpose                                                   |
 | ---------------------------------------------- | --------------------------------------------------------- |
 | `POST /auth/sign-up`                           | Create a login for an existing employee code              |
-| `POST /auth/register`                          | Register a user connected to HRDotNet                     |
+| `POST /auth/register`                          | Register an HRDotNet user with the server-assigned employee role |
 | `POST /auth/login`                             | Log in with an email or username. Returns `{ accessToken, expiresIn }` |
 | `POST /auth/refresh-token`                     | Exchange a valid access token for a new one               |
 | `GET /auth/me`                                 | The authenticated user (`userId`, `email`, `username`)    |
-| `GET /employees`, `GET /employees/me/profile`  | List employees, and the current user's record             |
+| `GET /employees`, `GET /employees/me/profile`  | List employee records by page, or get the current user's record |
 | `GET /employees/:id`                           | One employee (admin)                                      |
 | `POST /employees/create`, `POST /employees/:id/update` | Create and edit an employee (admin)               |
 | `GET /kpi-goals`, `GET /kpi-goals/:id`         | List KPI goal templates, and one with its indicator tree  |
@@ -28,6 +28,10 @@ The PMS API: a NestJS 12 service with JWT authentication, employee records, KPI 
 | `POST /kpi-goals/:id/published`, `POST /kpi-goals/:id/archived` | Publish the draft, archive a template   |
 | `GET /behavioral-assessment`, `GET /behavioral-assessment/:id` | List templates, and one with its section tree |
 | `POST /behavioral-assessment/create`, `POST /behavioral-assessment/:id/update`, `POST /behavioral-assessment/:id/published` | Create, replace the draft, publish |
+
+`GET /employees?page=1&pageSize=20` returns `{ items, page, pageSize, pageCount, total }`. Page numbers start at 1. The default page size is 20 and the maximum is 100. The API orders rows by employee ID. An empty result set has a page count of 0. A page past the end returns empty `items` with the requested page number and the full counts.
+
+`POST /auth/register` uses the `employee` code in `public.user_role`. Configure that role with an ID other than the reserved admin ID before enabling self-registration.
 
 ## Tech Stack
 
@@ -84,7 +88,7 @@ cp .env.example .env
 | `DB_USERNAME`, `DB_PASSWORD`              | none, required | HRDotNet SQL Server login          |
 | `DB_ENCRYPT`, `DB_TRUST_SERVER_CERTIFICATE` | unset      | Set to `true` to turn them on        |
 | `DB_CONNECTION_TIMEOUT`, `DB_REQUEST_TIMEOUT` | `30000`  | Milliseconds                         |
-| `JWT_ACCESS_SECRET`                       | a development value in code | Secret that signs tokens. Set it in every environment |
+| `JWT_ACCESS_SECRET`                       | none, required | Secret used to sign and verify access tokens |
 
 `.env.example` does not list the `POSTGRES_*` variables. Add them.
 
@@ -116,4 +120,4 @@ pnpm test:cov       # with coverage
 pnpm test:e2e       # uses vitest.config.e2e.ts; no e2e tests exist yet
 ```
 
-Today the 8 tests in `auth.service.spec.ts` fail with a Nest dependency error. Spec files also exist for the employee and behavioral assessment services.
+Unit tests cover authentication, environment validation, employee records and pagination, and behavioral assessment.

@@ -5,73 +5,76 @@ import { redirect } from "next/navigation";
 import {
   accountCreatedResponseSchema,
   authTokenResponseSchema,
-  nestErrorSchema,
+  readApiError,
+  type ApiErrorDetail,
 } from "@pms/shared-types";
 
-import { apiClient } from "@/api/api-client";
+import { postCredentials } from "@/features/auth/api/auth-requests";
 import {
   parseLogin,
+  parseRegister,
   parseSignUp,
 } from "@/features/auth/services/auth-credentials";
-import { SESSION_COOKIE } from "@/features/auth/services/session-cookie";
+import {
+  SESSION_COOKIE,
+  sessionCookieOptions,
+} from "@/features/auth/services/session-cookie";
 
-const AUTH_ENDPOINTS = {
-  login: "auth/login",
-  "sign-up": "auth/sign-up",
+const AUTH_REQUESTS = {
+  login: parseLogin,
+  "sign-up": parseSignUp,
+  register: parseRegister,
 } as const;
 
 const NOT_CONFIGURED = "The authentication service is not configured.";
 const COULD_NOT_COMPLETE = "Authentication could not be completed. Try again.";
 
-type SubmitResult = { message: string; isSuccess?: boolean };
+type SubmitResult = {
+  message: string;
+  isSuccess?: boolean;
+  kind?: "invalidCredentials";
+  details?: ApiErrorDetail[];
+};
 
-/** The first validation message the backend sent, when there is one. */
-function backendMessage(data: unknown) {
-  const parsed = nestErrorSchema.safeParse(data);
-  if (!parsed.success) return null;
-  const { message } = parsed.data;
-  return Array.isArray(message) ? (message[0] ?? null) : message;
+function backendFailure(data: unknown, fallback: string): SubmitResult {
+  const error = readApiError(data);
+  return error
+    ? { message: error.message, ...(error.details.length && { details: error.details }) }
+    : { message: fallback };
 }
 
 export async function submitCredentials(
   mode: unknown,
   input: unknown,
 ): Promise<SubmitResult> {
-  if (mode !== "login" && mode !== "sign-up") {
+  if (mode !== "login" && mode !== "sign-up" && mode !== "register") {
     return { message: "Check your details and try again." };
   }
-  const body = mode === "login" ? parseLogin(input) : parseSignUp(input);
+  const body = AUTH_REQUESTS[mode](input);
   if (!body) {
     return { message: "Check your details and try again." };
-  }
-
-  const baseUrl = process.env.PMS_API_BASE_URL;
-  if (!baseUrl) {
-    return { message: NOT_CONFIGURED };
   }
 
   let status: number;
   let data: unknown;
   try {
-    const url = new URL(AUTH_ENDPOINTS[mode], baseUrl.replace(/\/?$/, "/"));
-    if (url.protocol !== "https:" && url.protocol !== "http:") {
-      return { message: NOT_CONFIGURED };
-    }
-    const response = await apiClient.post<unknown>(url.href, body, {
-      responseType: "json",
-      transitional: { silentJSONParsing: false },
-      signal: AbortSignal.timeout(10_000),
-      validateStatus: (code) => code < 300 || code >= 400,
-    });
+    const response = await postCredentials(mode, body);
+    if (!response) return { message: NOT_CONFIGURED };
     status = response.status;
     data = response.data;
   } catch {
     return { message: "The authentication service is unavailable. Try again." };
   }
 
+  if (status === 400) {
+    return backendFailure(data, COULD_NOT_COMPLETE);
+  }
   if (mode === "login") {
     if (status === 401) {
-      return { message: "Email, username, or password is incorrect." };
+      return {
+        kind: "invalidCredentials",
+        message: "Email, username, or password is incorrect.",
+      };
     }
     if (status < 200 || status >= 300) {
       return { message: COULD_NOT_COMPLETE };
@@ -82,22 +85,21 @@ export async function submitCredentials(
         message: "The authentication service returned an invalid response.",
       };
     }
-    (await cookies()).set(SESSION_COOKIE, token.data.accessToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: Math.min(token.data.expiresIn, 3600),
-    });
-    redirect("/");
+    (await cookies()).set(
+      SESSION_COOKIE,
+      token.data.accessToken,
+      sessionCookieOptions(token.data.expiresIn),
+    );
+    return { isSuccess: true, message: "Logged in." };
   }
 
-  // sign-up: the backend creates the account but returns no token.
+  // Account creation returns a profile. Login issues the token.
+  // 409 has two causes: the employee has an account, or the username is taken.
   if (status === 409) {
-    return { message: "This employee already has an account. Log in instead." };
+    return backendFailure(data, "This employee already has an account. Log in instead.");
   }
-  if (status === 400) {
-    return { message: backendMessage(data) ?? COULD_NOT_COMPLETE };
+  if (mode === "register" && status === 404) {
+    return backendFailure(data, COULD_NOT_COMPLETE);
   }
   if (status < 200 || status >= 300) {
     return { message: COULD_NOT_COMPLETE };
@@ -107,6 +109,9 @@ export async function submitCredentials(
     return {
       message: "The authentication service returned an invalid response.",
     };
+  }
+  if (mode === "register") {
+    redirect("/login");
   }
   return {
     message: "Your account is ready. Log in to continue.",

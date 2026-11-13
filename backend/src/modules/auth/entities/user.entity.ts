@@ -20,6 +20,12 @@ export class User {
   @Column({ name: "password_hash", type: "text" })
   passwordHash: string;
 
+  @Column({ name: "failed_login_attempts", type: "integer", default: 0 })
+  failedLoginAttempts: number;
+
+  @Column({ name: "login_locked_until", type: "timestamptz", nullable: true })
+  loginLockedUntil: Date | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 

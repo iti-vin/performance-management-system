@@ -1184,11 +1184,11 @@ Actionable recovery queue, assignment history, scheduled/blocked/cancelled statu
 | Validation, access, conflict or technical failure | Actionable error       | Identify the field/action and correction; use a non-disclosing message for restricted data. | Reject without partial mutation or silent overwrite; preserve valid input; retry idempotently and provide a production correlation ID. |
 
 1. 202 Files, Journal Entries and NTE Files
-   | Specification Area | Definition |
-   | --- | --- |
-   | Purpose | Provide separate employee-record Journal Entries and NTE Files workflows, with HR-only issue/resolution and employee self-service response. |
-   | Primary actors | HR Administrator; Manager read-only within team; Employee view/respond to own issued NTE. |
-   | Dependencies | Employee/company directory, role/team scope, in-app notification state and retention policy. |
+   | Specification Area | Definition                                                                                                                                  |
+   | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Purpose            | Provide separate employee-record Journal Entries and NTE Files workflows, with HR-only issue/resolution and employee self-service response. |
+   | Primary actors     | HR Administrator; Manager read-only within team; Employee view/respond to own issued NTE.                                                   |
+   | Dependencies       | Employee/company directory, role/team scope, in-app notification state and retention policy.                                                |
 
 ### 11.1 Scope and Functional Summary
 
