@@ -1,18 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import type { JwtPayload } from '../types/jwt-payload.types.js';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
+import type { JwtPayload } from "../types/jwt-payload.types.js";
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-  constructor(private readonly config: ConfigService) {
+export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
+  constructor(config: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey:
-        config.get<string>('JWT_ACCESS_SECRET') ??
-        'dev-access-secret-change-in-production',
+      secretOrKey: config.getOrThrow<string>("JWT_ACCESS_SECRET"),
     });
   }
 

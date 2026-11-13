@@ -34,6 +34,17 @@ export function readTokenExpiry(token: string): number | null {
   }
 }
 
+/** Refresh a token in its last ten minutes. The backend refuses an expired one. */
+const REFRESH_WINDOW_SECONDS = 600;
+
+/** True when the token is still valid and close enough to its end to renew. */
+export function needsRefresh(token: string | undefined, nowSeconds: number) {
+  const expiry = token ? readTokenExpiry(token) : null;
+  if (expiry === null) return false;
+  const remaining = expiry - nowSeconds;
+  return remaining > 0 && remaining <= REFRESH_WINDOW_SECONDS;
+}
+
 export function isAuthPage(pathname: string) {
   return AUTH_PAGES.some(
     (page) => pathname === page || pathname.startsWith(`${page}/`),

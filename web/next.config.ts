@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   reactCompiler: true,
+  logging: {
+    serverFunctions: false,
+  },
   turbopack: {
     rules: {
       "*.css": {

@@ -18,9 +18,9 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import { useStore } from "zustand";
 import fullLogo from "../../public/assets/hrdotnet-logo-full.png";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,8 @@ import {
 } from "@/components/ui/sidebar";
 import type { WorkspaceNavigationItem } from "@/constants/workspace-navigation";
 import { WORKSPACE_NAVIGATION } from "@/constants/workspace-navigation";
+import { signOut } from "@/features/auth/services/sign-out";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkspaceAccountMenu } from "@/layouts/workspace-account-menu";
 import { WorkspaceClock } from "@/layouts/workspace-clock";
 import { createWorkspaceStore } from "@/stores/workspace-store";
@@ -335,33 +337,30 @@ interface WorkspaceLayoutProps {
   departmentName: string;
   accountName: string;
   firstName: string;
+  accountEmail?: string | null;
   /** True while the session data loads: the header shows skeletons. */
   isLoading?: boolean;
 }
 
 export function WorkspaceLayout({
   children,
-  role: initialRole,
+  role,
   departmentName,
   accountName,
   firstName,
+  accountEmail,
   isLoading = false,
 }: WorkspaceLayoutProps) {
   const departmentLabel = departmentName.trim().replace(/\s+Department$/i, "");
-  const [role, setRole] = useState(initialRole);
-  const router = useRouter();
+  const isMobile = useIsMobile();
   const [store] = useState(createWorkspaceStore);
   const isSidebarOpen = useStore(store, (state) => state.isSidebarOpen);
   const setSidebarOpen = useStore(store, (state) => state.setSidebarOpen);
   const accountMenuProps = {
     name: accountName,
     firstName,
-    role,
-    onPreviewRoleChange: (nextRole: WorkspaceRole) => {
-      if (nextRole === role) return;
-      setRole(nextRole);
-      router.push("/");
-    },
+    email: accountEmail,
+    onLogout: () => startTransition(signOut),
   };
 
   return (
@@ -431,19 +430,21 @@ export function WorkspaceLayout({
                 </p>
               </PopoverContent>
             </Popover>
-            <div className="hidden lg:block">
-              {isLoading ? (
-                <div
-                  aria-hidden="true"
-                  className="flex min-h-pms-touch items-center gap-2 px-2"
-                >
-                  <Skeleton className="size-8 rounded-full" />
-                  <Skeleton className="h-[1lh] w-24 text-pms-label" />
-                </div>
-              ) : (
-                <WorkspaceAccountMenu {...accountMenuProps} />
-              )}
-            </div>
+            {!isMobile && (
+              <div className="hidden lg:block">
+                {isLoading ? (
+                  <div
+                    aria-hidden="true"
+                    className="flex min-h-pms-touch items-center gap-2 px-2"
+                  >
+                    <Skeleton className="size-8 rounded-full" />
+                    <Skeleton className="h-[1lh] w-24 text-pms-label" />
+                  </div>
+                ) : (
+                  <WorkspaceAccountMenu {...accountMenuProps} />
+                )}
+              </div>
+            )}
           </div>
         </header>
         {children}

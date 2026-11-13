@@ -1,4 +1,13 @@
+import type { RoleCode } from "@pms/shared-types";
+
 import type { WorkspaceRole } from "@/types/role";
+
+/** Which menu each role of public.user_role sees. */
+export const WORKSPACE_ROLE_BY_CODE = {
+  ADMIN: "hr",
+  MANAGER: "manager",
+  USER: "employee",
+} as const satisfies Record<RoleCode, WorkspaceRole>;
 
 export const WORKSPACE_ROLE_LABELS = {
   employee: "Employee",

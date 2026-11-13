@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { roleCodeSchema } from "../domain/role-code.enum.js";
 
 /**
  * Contracts of backend/src/modules/auth. Field names follow the backend DTO
@@ -6,7 +7,7 @@ import { z } from "zod";
  * request with any extra field is rejected: send exactly these fields.
  */
 
-/** LoginDto allows 8 to 16. SignUpDto has no maximum, so it is capped here to keep a new password able to log in. */
+/** Password length limits for login, sign-up, and registration. */
 export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 16;
 
@@ -36,11 +37,7 @@ export const signUpRequestSchema = z
   });
 export type SignUpRequestDto = z.infer<typeof signUpRequestSchema>;
 
-/**
- * POST auth/register (connect an HRDotNet account). The backend RegisterDto also
- * takes `userRoleId` from the caller. That lets anyone choose their own role, so
- * it is left out here until the backend assigns the role itself.
- */
+/** POST auth/register. The backend assigns the employee role. */
 export const registerRequestSchema = z
   .object({
     employeeCode: z.string().trim().min(1),
@@ -73,9 +70,9 @@ export const accountCreatedResponseSchema = z.object({
     code: z.string().nullable(),
     firstName: z.string(),
     lastName: z.string(),
-    company: z.string(),
-    department: z.string(),
-    position: z.string(),
+    company: z.string().nullable(),
+    department: z.string().nullable(),
+    position: z.string().nullable(),
     status: z.string().nullable(),
   }),
 });
@@ -84,12 +81,17 @@ export type AccountCreatedResponseDto = z.infer<
 >;
 
 /**
- * GET auth/me. This is the token payload, not the employee: it has no name,
- * department, or role yet.
+ * GET auth/me. The account, its role, and the name of its employee record.
+ * `employeeCode`, `firstName`, and `lastName` are null for an account with no
+ * employee record.
  */
 export const currentUserDtoSchema = z.object({
   userId: z.string(),
   email: z.string().nullable(),
   username: z.string().nullable(),
+  role: roleCodeSchema,
+  employeeCode: z.string().nullable(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
 });
 export type CurrentUserDto = z.infer<typeof currentUserDtoSchema>;

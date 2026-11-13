@@ -67,20 +67,20 @@ test("token response needs accessToken and expiresIn", () => {
   );
 });
 
-test("the Nest default error body parses, with one or many messages", () => {
+test("current user carries a role code from public.user_role", () => {
+  const user = {
+    userId: "1",
+    email: "jane@example.com",
+    username: "jane",
+    role: "MANAGER",
+    employeeCode: "ITI-003",
+    firstName: "Jane",
+    lastName: "Doe",
+  };
+  assert.equal(shared.currentUserDtoSchema.safeParse(user).success, true);
   assert.equal(
-    shared.nestErrorSchema.safeParse({
-      statusCode: 401,
-      message: "Invalid credentials",
-      error: "Unauthorized",
-    }).success,
-    true,
+    shared.currentUserDtoSchema.safeParse({ ...user, role: "manager" }).success,
+    false,
   );
-  assert.equal(
-    shared.nestErrorSchema.safeParse({
-      statusCode: 400,
-      message: ["password must be longer than or equal to 8 characters"],
-    }).success,
-    true,
-  );
+  assert.deepEqual([...shared.ROLE_CODES], ["ADMIN", "MANAGER", "USER"]);
 });

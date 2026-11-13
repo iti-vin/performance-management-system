@@ -57,30 +57,6 @@ export const requiredTextSchema = z
 /** Free-form JSON object whose shape the backend has not defined yet. */
 export const jsonObjectSchema = z.record(z.string(), z.unknown());
 
-/** Problem-details error body (matches the backend `ApiErrorResponseDto`). */
-export const apiErrorSchema = z.object({
-  type: z.string(),
-  title: z.string(),
-  status: z.number().int(),
-  detail: z.string(),
-  instance: z.string(),
-  errors: z.record(z.string(), z.array(z.string())).optional(),
-});
-export type ApiError = z.infer<typeof apiErrorSchema>;
-
-/**
- * What the backend actually returns on an error today: the NestJS default body.
- * `message` is a list when the validation pipe rejects several fields. The
- * Swagger class ApiErrorResponseDto describes the problem-details shape above
- * instead, so the two do not match yet.
- */
-export const nestErrorSchema = z.object({
-  statusCode: z.number().int(),
-  message: z.union([z.string(), z.array(z.string())]),
-  error: z.string().optional(),
-});
-export type NestError = z.infer<typeof nestErrorSchema>;
-
 /**
  * Page envelope. ASSUMPTION: the backend has no list endpoints yet, so this
  * shape follows `ListingPagination` (page, pageSize, total). Adjust once the

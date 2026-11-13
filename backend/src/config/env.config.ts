@@ -1,10 +1,6 @@
 import { z } from "zod";
 
-/**
- * Every environment variable the API reads, checked once at startup by ConfigModule.
- * The defaults and the required variables are the ones the code already used: this file
- * moves them to one place and changes no behavior.
- */
+/** Environment variables checked at startup by ConfigModule. */
 const envSchema = z.looseObject({
   // App
   PORT: z.coerce.number().default(3000),
@@ -27,8 +23,7 @@ const envSchema = z.looseObject({
   DB_CONNECTION_TIMEOUT: z.coerce.number().default(30000),
   DB_REQUEST_TIMEOUT: z.coerce.number().default(30000),
 
-  // JWT. Optional for now: the auth module still falls back to a development secret.
-  JWT_ACCESS_SECRET: z.string().optional(),
+  JWT_ACCESS_SECRET: z.string().refine((secret) => secret.trim().length > 0, "Must not be blank"),
 });
 
 export type Env = z.infer<typeof envSchema>;
