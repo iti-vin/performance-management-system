@@ -1,7 +1,10 @@
--- Employees
+-- Identity and Directory: employees. Load after companies, departments, and positions.
+-- UUID workflows reference guid. UNIQUE allows nullable GUIDs while making the key valid for foreign keys.
+
+-- Stores directory records and the GUID used by workflow tables.
 CREATE TABLE IF NOT EXISTS pms.employees (
-    guid            uuid PRIMARY KEY,
-    id              bigint,
+    guid            uuid,
+    id              bigint PRIMARY KEY,
     code            text NOT NULL,
     email           text NOT NULL,
     first_name      text NOT NULL,
@@ -14,5 +17,6 @@ CREATE TABLE IF NOT EXISTS pms.employees (
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now(),
 
-    UNIQUE (company_id, employee_code)
+    UNIQUE (guid),
+    UNIQUE (company_id, code, email)
 );

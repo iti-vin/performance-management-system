@@ -1,4 +1,9 @@
--- KPI Goal Templates
+-- ============================================================================
+-- 4. KPI Goal Templates
+-- ============================================================================
+-- Defines versioned KPI templates, indicators, scoring ranges, and matrix axes.
+
+-- Stores the current KPI template state for a company and position.
 CREATE TABLE IF NOT EXISTS pms.kpi_goal_templates (
     template_id     uuid PRIMARY KEY,
     position_id     bigint REFERENCES pms.positions(position_id),
@@ -13,6 +18,7 @@ CREATE TABLE IF NOT EXISTS pms.kpi_goal_templates (
 );
 
 -- Immutable: one row per published/draft version.
+-- Keeps each numbered version of a KPI template.
 CREATE TABLE IF NOT EXISTS pms.kpi_template_versions (
     version_id  uuid PRIMARY KEY,
     template_id uuid NOT NULL REFERENCES pms.kpi_goal_templates(template_id),
@@ -24,6 +30,7 @@ CREATE TABLE IF NOT EXISTS pms.kpi_template_versions (
 );
 
 -- Belong to a template version. Stable identity per indicator row.
+-- Defines the measures and scoring direction in a template version.
 CREATE TABLE IF NOT EXISTS pms.kpi_indicators (
     indicator_id        uuid PRIMARY KEY,
     version_id          uuid NOT NULL REFERENCES pms.kpi_template_versions(version_id),
@@ -35,10 +42,11 @@ CREATE TABLE IF NOT EXISTS pms.kpi_indicators (
     weight              numeric(5,2) NOT NULL CHECK (weight > 0),
     score_target_met    integer NOT NULL CHECK (score_target_met BETWEEN 1 AND 5),
     score_below_target  integer NOT NULL CHECK (score_below_target BETWEEN 1 AND 5),
-    use_for_scoring     boolean NOT NULL DEFAULT true
+    use_for_scoring     boolean NOT NULL DEFAULT true  -- Tpl-G-004 toggle
 );
 
 -- Scoring boundary mapping. One row per threshold band per indicator.
+-- Maps numeric ranges to indicator scores.
 CREATE TABLE IF NOT EXISTS pms.kpi_indicator_scales (
     scale_id     uuid PRIMARY KEY,
     indicator_id uuid NOT NULL REFERENCES pms.kpi_indicators(indicator_id),
@@ -48,12 +56,14 @@ CREATE TABLE IF NOT EXISTS pms.kpi_indicator_scales (
 );
 
 -- Flexible reference matrix.
+-- Defines the row labels for matrix indicators.
 CREATE TABLE IF NOT EXISTS pms.kpi_indicator_matrix_rows (
     row_id       uuid PRIMARY KEY,
     indicator_id uuid NOT NULL REFERENCES pms.kpi_indicators(indicator_id),
     row_label    text NOT NULL
 );
 
+-- Defines the column labels for matrix indicators.
 CREATE TABLE IF NOT EXISTS pms.kpi_indicator_matrix_columns (
     col_id       uuid PRIMARY KEY,
     indicator_id uuid NOT NULL REFERENCES pms.kpi_indicators(indicator_id),

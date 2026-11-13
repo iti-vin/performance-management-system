@@ -1,15 +1,12 @@
 // Fails when an enum in src/domain drifts from a CHECK constraint in
 // packages/database/schema.sql. Run after `pnpm build:packages`.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import * as shared from "../dist/index.js";
+import { readSchema } from "../../database/sql-files.mjs";
 
-const schemaSql = readFileSync(
-  new URL("../../database/schema.sql", import.meta.url),
-  "utf8",
-);
+const schemaSql = readSchema();
 
 // [table, column, exported constant, values the DTOs keep that the CHECK does not list]
 const PAIRS = [

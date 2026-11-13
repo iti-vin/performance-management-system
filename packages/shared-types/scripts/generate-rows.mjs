@@ -15,9 +15,9 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readSchema } from "../../database/sql-files.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const SCHEMA_PATH = join(here, "../../database/schema.sql");
 const OUT_DIR = join(here, "../src/rows");
 const CHECK_ONLY = process.argv.includes("--check");
 
@@ -96,7 +96,7 @@ function zodFor(table, column, sqlType, notNull) {
   return { expr: notNull ? expr : `${expr}.nullable()`, imports };
 }
 
-const sql = readFileSync(SCHEMA_PATH, "utf8").replace(/\r\n/g, "\n");
+const sql = readSchema().replace(/\r\n/g, "\n");
 const tables = [
   ...sql.matchAll(/CREATE TABLE IF NOT EXISTS pms\.(\w+) \(\n([\s\S]*?)\n\);/g),
 ];

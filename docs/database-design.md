@@ -320,9 +320,9 @@ One response row per assignment, immutable once submitted; corrections create a 
 | reopen_reason              | text             |                                    |
 | created_at                 | timestamptz      |                                    |
 
-### 8.3 evaluation_snapshots
+### Finalization, Scoring, and Result Release
 
-Locks all finalized result evidence.
+The evaluation results module stores one snapshot per cycle and participant (PRD section 9).
 
 | Column                     | Type             | Notes                                             |
 | -------------------------- | ---------------- | ------------------------------------------------- |
@@ -336,7 +336,7 @@ Locks all finalized result evidence.
 | finalized_by, finalized_at | uuid/timestamptz |                                                   |
 | released_at                | timestamptz      |                                                   |
 
-Immutable after `finalized_at` (Res-002).
+The SQL check requires `finalized_at` before `released_at` and enforces timestamp order (Res-002 and Res-003). The service owns evidence immutability, release permissions, and visibility. See the [physical relationship diagrams](database-schema.md#14-key-relationship-map).
 
 ---
 

@@ -1,9 +1,15 @@
--- Evaluator Assignments and Assessments
+-- ============================================================================
+-- 8. Evaluator Assignments and Assessments
+-- ============================================================================
+-- Stores evaluator assignments and response versions (PRD section 8).
+-- The service checks evaluator scope and stage readiness before submission.
+
+-- Links an evaluator to a review subject and cycle stage.
 CREATE TABLE IF NOT EXISTS pms.assignments (
     assignment_id  uuid PRIMARY KEY,
     cycle_id       uuid NOT NULL REFERENCES pms.cycles(cycle_id),
-    participant_id uuid NOT NULL REFERENCES pms.cycle_participants(participant_id),
-    evaluator_id   uuid NOT NULL REFERENCES pms.employees(guid),
+    participant_id uuid NOT NULL REFERENCES pms.cycle_participants(participant_id),   -- subject
+    evaluator_id   uuid NOT NULL REFERENCES pms.employees(guid),  -- retained after manager change (Rev-007, AUTH-004)
     stage_id       uuid NOT NULL REFERENCES pms.cycle_stages(stage_id),
     state          text NOT NULL CHECK (state IN ('locked','not_started','in_progress','submitted','completed')),
     deadline       timestamptz,
@@ -15,10 +21,13 @@ CREATE TABLE IF NOT EXISTS pms.assignments (
     UNIQUE (participant_id, evaluator_id, stage_id)
 );
 
+-- One response row per assignment; immutable once submitted, corrections
+-- create a new version row.
+-- Stores versioned answers for an evaluator assignment.
 CREATE TABLE IF NOT EXISTS pms.assignment_responses (
     response_id     uuid PRIMARY KEY,
     assignment_id   uuid NOT NULL REFERENCES pms.assignments(assignment_id),
-    answers_json    jsonb NOT NULL,
+    answers_json    jsonb NOT NULL,      -- typed answers keyed by question_id
     version         integer NOT NULL,
     status          text NOT NULL CHECK (status IN ('draft','submitted')),
     submitted_by    uuid,
@@ -26,18 +35,4 @@ CREATE TABLE IF NOT EXISTS pms.assignment_responses (
     reopen_reason   text,
     created_at      timestamptz NOT NULL DEFAULT now(),
     UNIQUE (assignment_id, version)
-);
-
-CREATE TABLE IF NOT EXISTS pms.evaluation_snapshots (
-    snapshot_id                 uuid PRIMARY KEY,
-    cycle_id                    uuid NOT NULL REFERENCES pms.cycles(cycle_id),
-    participant_id              uuid NOT NULL REFERENCES pms.cycle_participants(participant_id),
-    goals_component_score       numeric,
-    behavioral_component_score  numeric,
-    overall_score               numeric,
-    evidence_json               jsonb NOT NULL,
-    finalized_by                uuid,
-    finalized_at                timestamptz,
-    released_at                 timestamptz,
-    UNIQUE (cycle_id, participant_id)
 );

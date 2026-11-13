@@ -3,6 +3,8 @@
 -- HRDotNet Performance PMS
 -- Identity and Directory Schema
 -- PostgreSQL | public schema
+-- Reference design only. The package bootstrap does not include this file.
+-- Reconcile it with the TypeORM entities before using it for a migration.
 --
 -- Tables:
 --   1. user_role

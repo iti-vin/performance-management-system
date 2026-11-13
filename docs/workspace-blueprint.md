@@ -33,9 +33,10 @@ Enforced by lint, so a violation fails CI:
 
 ### Schema ownership
 
-**Decision (assumed, confirm with the backend developer):** `packages/database/schema.sql`
-is the single source of truth for tables and columns. `@pms/shared-types` generates one row
-schema per table from it (`pnpm --filter @pms/shared-types generate`), and CI fails when the
+**Decision (assumed, confirm with the backend developer):** The SQL modules listed in
+`packages/database/schema.sql` are the source of truth for tables and columns.
+`@pms/shared-types` generates row schemas from those modules
+(`pnpm --filter @pms/shared-types generate`), and CI fails when the
 generated files are out of date. The backend entities (TypeORM) follow the schema. They do
 not define it.
 

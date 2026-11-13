@@ -26,54 +26,54 @@ The supplied database design is the schema authority for this document. The PRD 
 
 ### 3.1 `companies`
 
-| Column | Type | Notes |
-|---|---|---|
-| `company_id` | uuid PK | Company identity |
-| `name` | text | Company name |
-| `demo_mode` | boolean | Demo clock mode |
-| `demo_date` | date | Validated demo calendar date |
-| `created_at`, `updated_at` | timestamptz | Standard timestamps |
+| Column                     | Type        | Notes                        |
+| -------------------------- | ----------- | ---------------------------- |
+| `company_id`               | uuid PK     | Company identity             |
+| `name`                     | text        | Company name                 |
+| `demo_mode`                | boolean     | Demo clock mode              |
+| `demo_date`                | date        | Validated demo calendar date |
+| `created_at`, `updated_at` | timestamptz | Standard timestamps          |
 
 ### 3.2 `employees`
 
-| Column | Type | Notes |
-|---|---|---|
-| `employee_id` | uuid PK | Stable employee identity |
-| `company_id` | uuid FK | References `companies` |
-| `hrdotnet_id` | text nullable | HRDotNet source reference; nullable before integration |
-| `employee_number` | text | Employee number |
-| `first_name`, `last_name` | text | Employee name |
-| `position_id` | uuid FK | References `positions` |
-| `department` | text | Department |
-| `status` | text | Active/inactive; rehire and termination behavior follows PRD Dir-009 |
-| `created_at`, `updated_at` | timestamptz | Standard timestamps |
+| Column                     | Type          | Notes                                                                |
+| -------------------------- | ------------- | -------------------------------------------------------------------- |
+| `employee_id`              | uuid PK       | Stable employee identity                                             |
+| `company_id`               | uuid FK       | References `companies`                                               |
+| `hrdotnet_id`              | text nullable | HRDotNet source reference; nullable before integration               |
+| `employee_number`          | text          | Employee number                                                      |
+| `first_name`, `last_name`  | text          | Employee name                                                        |
+| `position_id`              | uuid FK       | References `positions`                                               |
+| `department`               | text          | Department                                                           |
+| `status`                   | text          | Active/inactive; rehire and termination behavior follows PRD Dir-009 |
+| `created_at`, `updated_at` | timestamptz   | Standard timestamps                                                  |
 
 ### 3.3 `positions`
 
-| Column | Type | Notes |
-|---|---|---|
-| `position_id` | uuid PK | Position identity |
-| `company_id` | uuid FK | Company scope |
-| `title` | text | Position title |
+| Column                     | Type        | Notes               |
+| -------------------------- | ----------- | ------------------- |
+| `position_id`              | uuid PK     | Position identity   |
+| `company_id`               | uuid FK     | Company scope       |
+| `title`                    | text        | Position title      |
 | `created_at`, `updated_at` | timestamptz | Standard timestamps |
 
 ## 4. Effective-dated manager assignments
 
 ### `manager_assignments`
 
-| Column | Type | Notes |
-|---|---|---|
-| `assignment_id` | uuid PK | Assignment identity |
-| `employee_id` | uuid FK | Employee receiving manager |
-| `manager_id` | uuid FK | Assigned manager |
-| `company_id` | uuid FK | Company scope |
-| `effective_date` | date | On or after current company date |
-| `status` | text | `pending`, `applied`, `blocked`, `cancelled` |
-| `previous_manager_id` | uuid FK nullable | Set when applied |
-| `apply_reason`, `cancel_reason`, `blocked_reason` | text nullable | Workflow explanations |
-| `applied_at`, `cancelled_at`, `blocked_at` | timestamptz nullable | State timestamps |
-| `idempotency_key` | text | Duplicate-application protection |
-| `created_at`, `updated_at` | timestamptz | Standard timestamps |
+| Column                                            | Type                 | Notes                                        |
+| ------------------------------------------------- | -------------------- | -------------------------------------------- |
+| `assignment_id`                                   | uuid PK              | Assignment identity                          |
+| `employee_id`                                     | uuid FK              | Employee receiving manager                   |
+| `manager_id`                                      | uuid FK              | Assigned manager                             |
+| `company_id`                                      | uuid FK              | Company scope                                |
+| `effective_date`                                  | date                 | On or after current company date             |
+| `status`                                          | text                 | `pending`, `applied`, `blocked`, `cancelled` |
+| `previous_manager_id`                             | uuid FK nullable     | Set when applied                             |
+| `apply_reason`, `cancel_reason`, `blocked_reason` | text nullable        | Workflow explanations                        |
+| `applied_at`, `cancelled_at`, `blocked_at`        | timestamptz nullable | State timestamps                             |
+| `idempotency_key`                                 | text                 | Duplicate-application protection             |
+| `created_at`, `updated_at`                        | timestamptz          | Standard timestamps                          |
 
 Application invariants: no self-assignment, employee and manager must belong to the same company, and the projected reporting graph must not contain a reporting loop. Validate the complete proposed batch and revalidate at effective date.
 
@@ -116,6 +116,8 @@ Only observed numeric rating answers from 1–5 contribute to behavioral scoring
 
 `cycle_id` UUID PK; `company_id` FK; `name`; `review_type` (`standard`, `360`, `probationary`, `project_based`); `state` (`draft`, `scheduled`, `active`, `completed`, `cancelled`); `evaluation_start`, `evaluation_end` dates; `assessment_start`, `verification_deadline` timestamptz; `activation_date` date; `goals_weight`, `behavioral_weight` numeric; `anonymity_threshold` integer 2–10; `cancelled_reason`; `finalized_at`, `released_at`; `idempotency_key`; timestamps.
 
+The bootstrap SQL enforces component weights between 0 and 1 and a combined total of 1 (100 percent).
+
 ### 7.2 `cycle_participants`
 
 `participant_id` UUID PK; `cycle_id` FK; `employee_id` FK; `frozen_position_id` FK; `kpi_version_id` FK; `behavioral_version_id` FK; `created_at`.
@@ -131,18 +133,21 @@ Cycle activation creates participant and assignment records transactionally and 
 ## 8. KPI accomplishments
 
 - `accomplishments`: one per cycle participant; `accomplishment_id` UUID PK, `participant_id` FK, `cycle_id`, `employee_id`, `status` (`draft`, `submitted`, `returned`, `verified`), remarks, submit/verify actor and timestamps, return reason, standard timestamps. Unique `(participant_id)`.
-- `accomplishment_actuals`: one row per indicator per accomplishment; `actual_id` UUID PK, `accomplishment_id` FK, `indicator_id` FK, nonnegative `actual_value` (nullable in draft), timestamps.
+- `accomplishment_actuals`: one row per indicator per accomplishment; `actual_id` UUID PK, `accomplishment_id` FK, `indicator_id` FK, nonnegative `actual_value` (nullable in draft), timestamps. Unique `(accomplishment_id, indicator_id)`.
 - `accomplishment_versions`: correction snapshots; `version_id` UUID PK, `accomplishment_id` FK, version number, `actuals_json`, remarks, actor, acted timestamp and correction reason.
 
 Every correction/resubmission after return retains the prior submitted values and actor/time evidence.
 
-## 9. Evaluator assignments and evaluation snapshots
+## 9. Evaluator assignments
 
 - `assignments`: `assignment_id` UUID PK, `cycle_id` FK, `participant_id` FK (subject), `evaluator_id` FK, `stage_id` FK, state (`locked`, `not_started`, `in_progress`, `submitted`, `completed`), deadline, submission/completion actor and timestamps, standard timestamps. Unique `(participant_id, evaluator_id, stage_id)`.
-- `assignment_responses`: one response per assignment; `response_id` UUID PK, `assignment_id` FK, `answers_json` keyed by question ID, version, status (`draft`, `submitted`), submit actor/time, `reopen_reason`, `created_at`.
-- `evaluation_snapshots`: immutable finalized evidence; `snapshot_id` UUID PK, `cycle_id` FK, `participant_id` FK, goals/behavioral/overall scores, `evidence_json`, finalizer/time, `released_at`.
+- `assignment_responses`: one row per response version, unique on `(assignment_id, version)`; `response_id` UUID PK, `assignment_id` FK, `answers_json` keyed by question ID, version, status (`draft`, `submitted`), submit actor/time, `reopen_reason`, `created_at`.
 
-The evaluator assignment retains its original evaluator after manager reassignment. Finalization locks the snapshot; release is a separate action and timestamp.
+Assignment ownership and manager reassignment follow the workflow rules in the PRD.
+
+### Finalization, scoring, and result release
+
+`evaluation_snapshots` lives in the evaluation results module. It stores one snapshot per cycle and participant, with component scores, overall score, and frozen evidence. SQL requires `finalized_at` before `released_at` and rejects release timestamps earlier than finalization. Services enforce evidence immutability and decide who can see released results.
 
 ## 10. 202 Files
 
@@ -158,7 +163,7 @@ An issued NTE is locked. An employee may submit one explanation while the notice
 - `pip_sources`: source indicator evidence; plan/cycle/indicator FKs, frozen actual/target, direction/unit/score/matrix criteria JSON, optional covered week, exclusion reason, referral-reviewed flag. Unique `(plan_id, cycle_id, indicator_id)`.
 - `pip_weeks`: plan FK, optional source FK, focus, goal description, target/unit/direction, inclusive start/end dates, status (`pending`, `active`, `completed`, `not_met`), optional follow-up week/reason, missed-assessment reason, timestamps.
 - `pip_week_updates`: week FK, employee FK, status (`draft`, `submitted`, `returned`), progress actual, remarks, return reason, submitted/updated timestamps.
-- `pip_week_assessments`: week FK, optional update FK, assessor FK, outcome (`met`, `not_met`, `missed`), verified actual, remarks, required missed reason when outcome is `missed`, assessed timestamp.
+- `pip_week_assessments`: week FK, optional update FK, assessor UUID, outcome (`met`, `not_met`, `missed`), verified actual, remarks, required missed reason when outcome is `missed`, assessed timestamp.
 
 A PIP source is identified by cycle plus indicator, not indicator alone. Weekly sections are inclusive seven-day periods and must not overlap sibling weeks. Automatic referral requires a completed and released evaluation with at least one individually verified measurable below-target indicator.
 
@@ -166,7 +171,7 @@ A PIP source is identified by cycle plus indicator, not indicator alone. Weekly 
 
 - `operational_goals`: owner/creator/company FKs, name/description/category (`quality`, `delivery`, `growth`, `collaboration`), optional cycle FK, start/due dates, progress percentage 0–100, tracking mode (`manual`, `milestone`), status (`active`, `pending_approval`, `completed`), version for stale-write detection, timestamps.
 - `goal_milestones`: goal FK, title, optional due date, done flag, completed timestamp, status (`pending`, `completed`, `completed_late`, `overdue`), timestamps.
-- `goal_progress_updates`: goal/actor FKs, progress percentage, optional comment, milestone snapshot JSON, updated timestamp.
+- `goal_progress_updates`: goal FK and actor UUID, progress percentage, optional comment, milestone snapshot JSON, updated timestamp.
 
 Operational goals are separate from KPI scoring.
 
@@ -188,23 +193,109 @@ No UPDATE or DELETE is permitted on `audit_events`. Access is through role-scope
 
 ## 14. Key relationship map
 
-```text
-companies
-├── employees ── manager_assignments (employee -> manager)
-│   ├── operational_goals ── goal_milestones / goal_progress_updates
-│   ├── journal_entries
-│   ├── nte_notices ── nte_read_receipts
-│   └── pip_plans ── pip_sources / pip_weeks
-│                    ├── pip_week_updates
-│                    └── pip_week_assessments
-├── positions ── kpi_goal_templates ── kpi_template_versions
-│                                  └── kpi_indicators ── scales / matrix
-└── behavioral_templates ── versions ── sections ── questions ── options
+These diagrams show the foreign keys declared by the modular bootstrap SQL. A label names the foreign-key column in the child table. The diagrams group related tables by workflow so each remains readable.
 
-cycles
-├── cycle_participants ── accomplishments ── actuals / versions
-├── cycle_stages ── assignments ── assignment_responses
-└── evaluation_snapshots
+### Directory and frozen templates
+
+```mermaid
+erDiagram
+    companies ||..o{ departments : company_id
+    companies ||..o{ positions : company_id
+    companies ||..o{ employees : company_id
+    departments ||..o{ employees : department_id
+    positions |o..o{ employees : position_id
+    companies ||..o{ manager_assignments : company_id
+    employees ||..o{ manager_assignments : employee_id
+    employees ||..o{ manager_assignments : manager_id
+    employees |o..o{ manager_assignments : previous_manager_id
+    companies ||..o{ kpi_goal_templates : company_id
+    positions |o..o{ kpi_goal_templates : position_id
+    kpi_goal_templates ||..o{ kpi_template_versions : template_id
+    kpi_template_versions ||..o{ kpi_indicators : version_id
+    kpi_indicators ||..o{ kpi_indicator_scales : indicator_id
+    kpi_indicators ||..o{ kpi_indicator_matrix_rows : indicator_id
+    kpi_indicators ||..o{ kpi_indicator_matrix_columns : indicator_id
+    companies ||..o{ behavioral_templates : company_id
+    behavioral_templates ||..o{ behavioral_template_versions : template_id
+    behavioral_template_versions ||..o{ behavioral_sections : version_id
+    behavioral_sections ||..o{ behavioral_questions : section_id
+    behavioral_questions ||..o{ behavioral_choice_options : question_id
+```
+
+### Review cycle, results, and improvement plans
+
+```mermaid
+erDiagram
+    companies ||..o{ cycles : company_id
+    cycles ||..o{ cycle_participants : cycle_id
+    employees ||..o{ cycle_participants : employee_id
+    positions |o..o{ cycle_participants : frozen_position_id
+    kpi_template_versions |o..o{ cycle_participants : kpi_version_id
+    behavioral_template_versions |o..o{ cycle_participants : behavioral_version_id
+    cycles ||..o{ cycle_stages : cycle_id
+    cycles ||..o{ accomplishments : cycle_id
+    employees ||..o{ accomplishments : employee_id
+    cycle_participants ||..o| accomplishments : participant_id
+    accomplishments ||..o{ accomplishment_actuals : accomplishment_id
+    kpi_indicators ||..o{ accomplishment_actuals : indicator_id
+    accomplishments ||..o{ accomplishment_versions : accomplishment_id
+    cycles ||..o{ assignments : cycle_id
+    cycle_participants ||..o{ assignments : participant_id
+    employees ||..o{ assignments : evaluator_id
+    cycle_stages ||..o{ assignments : stage_id
+    assignments ||..o{ assignment_responses : assignment_id
+    cycles ||..o{ evaluation_snapshots : cycle_id
+    cycle_participants ||..o{ evaluation_snapshots : participant_id
+    evaluation_snapshots |o..o{ pip_plans : linked_evaluation_snapshot_id
+    employees ||..o{ pip_plans : employee_id
+    companies ||..o{ pip_plans : company_id
+    pip_plans ||..o{ pip_sources : plan_id
+    cycles ||..o{ pip_sources : cycle_id
+    kpi_indicators ||..o{ pip_sources : indicator_id
+    pip_plans ||..o{ pip_weeks : plan_id
+    pip_sources |o..o{ pip_weeks : source_id
+    pip_weeks |o..o{ pip_weeks : follow_up_of_week_id
+    pip_weeks ||..o{ pip_week_updates : week_id
+    employees ||..o{ pip_week_updates : employee_id
+    pip_weeks ||..o{ pip_week_assessments : week_id
+    pip_week_updates |o..o{ pip_week_assessments : update_id
+```
+
+Employee UUID foreign keys reference `pms.employees.guid`. The snapshot unique key covers the pair `(cycle_id, participant_id)`.
+
+### 202 Files, operational goals, and notifications
+
+```mermaid
+erDiagram
+    employees ||..o{ journal_entries : employee_id
+    employees ||..o{ journal_entries : author_id
+    companies ||..o{ journal_entries : company_id
+    cycles |o..o{ journal_entries : cycle_id
+    employees ||..o{ nte_notices : employee_id
+    companies ||..o{ nte_notices : company_id
+    nte_notices ||..o{ nte_read_receipts : notice_id
+    employees ||..o{ nte_read_receipts : employee_id
+    employees ||..o{ operational_goals : owner_id
+    employees ||..o{ operational_goals : creator_id
+    companies ||..o{ operational_goals : company_id
+    cycles |o..o{ operational_goals : cycle_id
+    operational_goals ||..o{ goal_milestones : goal_id
+    operational_goals ||..o{ goal_progress_updates : goal_id
+    employees ||..o{ notifications : recipient_id
+    employees ||--o| notification_preferences : employee_id
+```
+
+`notifications.source_id` and `audit_events.entity_id` can refer to different kinds of records. SQL defines no foreign key on either column.
+
+### Public identity reference
+
+This diagram describes the identity reference draft. The package bootstrap creates standalone `public.users` and `pms.user_role` without identity foreign keys. See the workspace blueprint for the open TypeORM alignment decision.
+
+```mermaid
+erDiagram
+    public_user_role ||..o{ public_employees : user_role_id
+    public_user_role ||..o{ public_users : user_role_id
+    public_employees ||..o| public_users : employee_id
 ```
 
 ## 15. Integrity and implementation notes
@@ -215,6 +306,6 @@ cycles
 4. Use transactions for cycle activation, finalization/release transitions, NTE issue/close, PIP planning/assessment and manager-assignment application.
 5. Use idempotency keys for retried workflow commands.
 6. Use optimistic concurrency/version checks for operational goals and any mutable record exposed to concurrent editing.
-7. Validate cross-row rules in the service layer: 100% weights, threshold continuity/order, manager reporting graph, non-overlapping PIP weeks, cycle readiness and role/company scope.
+7. Validate cross-row rules in the service layer: KPI indicator weight totals, threshold continuity/order, manager reporting graph, non-overlapping PIP weeks, cycle readiness and role/company scope.
 8. Confirm unresolved physical details before migrations: matrix cell table shape, exact FK columns on denormalized records, composite company-aware FK strategy, indexes, enum/check constraints, deletion behavior and attachment storage.
-9. Do not treat this logical design as evidence that migrations, backups, retention, encryption or production authorization already exist.
+9. Apply explicit migrations to existing databases to enforce new bootstrap constraints. Track backups, retention, encryption, and production authorization separately.
