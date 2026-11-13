@@ -1,66 +1,23 @@
-<!-- sauron:start (managed by Sauron; edit outside this block) -->
-<!--
-  AGENTS.md: shared agent instructions standard (https://agents.md).
-  Read by Codex, Cursor, GitHub Copilot, Windsurf, Cline, OpenCode, Kiro, Zed, CodeBuddy, and Pi.
--->
+# PMS Backend
 
-# AGENTS.md
+The root instructions apply to this workspace.
 
-> Governed by Sauron v1.0.0. Shared instructions for every AGENTS.md-aware coding agent.
+## Commands
 
-## Project Overview
+- From the repository root, run `pnpm dev:backend` with the backend port set to 4000.
+- Run `pnpm --filter @pms/backend test` and `pnpm --filter @pms/backend lint` for affected changes.
+- Use `pnpm --filter @pms/backend exec tsc --noEmit -p tsconfig.json` for type checking. A Nest build deletes the compiled output, so run it only when the backend dev server is stopped.
 
-Production codebase governed by Sauron Universal Agent Harness.
+## NestJS and API validation
 
-## Essential Commands
+- Use `backend-development` and `api-design` for backend and API changes when available.
+- Keep controllers focused on routing and HTTP concerns. Put business rules in services and persistence in repositories or entities.
+- Validate API inputs with the existing Nest DTO validators or Zod at the request boundary. Keep required fields, types, and limits consistent with shared contracts.
+- Use the shared API error envelope for client-facing errors. Return field details for validation failures and keep raw database errors out of responses.
+- Verify validation and authorization with requests that reach the API directly, including rejected input and denied access.
 
-- Build: `npm run build`
-- Test All: `npm test`
-- Typecheck: `npx tsc --noEmit`
+## Authorization and data
 
-## Engineering Rules
-
-- Present tense, active voice, English language exclusively.
-- Zero emojis across all code files, comments, and commit messages.
-- Prohibit Latin abbreviations: use 'for example', 'that is', 'and so forth'.
-- Prohibit em dashes: use colons, parentheses, or separate sentences.
-- Strict Red-Green-Refactor TDD required before touching production code.
-- Zero untyped boundary parameters: enforce runtime validation (Zod, Pydantic).
-- Zero hardcoded secrets, connection strings, or unredacted logging output.
-- Token Conservation & Caveman Mode: active at tier 'ultra' from the first reply, no trigger needed. Preserve all code, commands, paths, and negations verbatim. Disable with '/caveman off'.
-
-## Token Optimization & Caveman Mode
-
-- Default: ACTIVE at tier `ultra` from the first reply of every session. No trigger command is needed.
-- Tier `ultra`: Maximum compression: fragments, common abbreviations, arrows for cause and effect. One word when one word is enough.
-- Never compress code blocks, diffs, commands, file paths, URLs, error messages, or quoted text. Copy them verbatim.
-- Never drop negations (`not`, `never`, `no`). Compression must not flip meaning.
-- Use normal prose for security warnings and confirmations of irreversible actions.
-- Switch tiers on request: `/caveman lite`, `/caveman full`, `/caveman ultra`. Disable with `/caveman off`.
-
-## Fellowship Sub-Agents
-
-- **Elessar** (`/aragorn`): Principal System Architect
-- **Shield of Gondor** (`/boromir`): Security Auditor and Shield
-- **Ringbearer** (`/frodo`): Core Task Executor
-- **Mithrandir** (`/gandalf`): Master Planner and Strategy Guide
-- **Lockbearer** (`/gimli`): Refactorer and AST Dead Code Slasher
-- **Greenleaf** (`/legolas`): Precision Linter and Syntax Bug Hunter
-- **Brandir** (`/merry`): QA and TDD Specialist
-- **Took** (`/pippin`): Edge Case and Chaos Prober
-- **The Brave** (`/samwise`): Git Commits and State Keeper
-
-## Anti-Pattern Guardrails
-
-- AP-1 (Vague task verb) : Always decompose requests into concrete atomic tasks.
-- AP-6 (Monolithic prompt) : Never combine architecture, code, and test in one step.
-- AP-14 (Leaking secrets) : Zero credentials in version control.
-- AP-17 (Skipping tests) : Code without a prior failing test is unverified code.
-- AP-18 (Non-atomic commit) : One logical concern per commit.
-- AP-52 (Fake fix) : Masking errors with type casts or empty catch blocks is prohibited.
-- Full catalog: see `.agents/anti-patterns.md` before planning non-trivial work.
-
-## Skills
-
-- Shared Agent Skills live in `.agents/skills/<name>/SKILL.md`. See `.agents/skills/README.md`.
-<!-- sauron:end -->
+- Enforce authorization at the API boundary. Apply `auth-architecture` to auth and session changes when available.
+- Keep HRDotNet MSSQL access read-only. Use transactions for multi-step PostgreSQL writes, parameterize queries, and avoid N+1 access.
+- Follow the root security review workflow when completing a module. Coordinate backend changes with its owner before merge.

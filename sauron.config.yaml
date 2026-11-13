@@ -4,7 +4,7 @@ project:
   name: "sauron-workspace"
   description: "Target application orchestrated by sauron universal agent harness"
   language: "typescript" # typescript | python | rust | go | multi
-  framework: "nextjs" # optional framework hint
+  framework: ["nextjs", "nestjs"] # optional framework hint
 
 # The 20 Runtimes Bound by sauron (set true/false per workspace)
 runtimes:
