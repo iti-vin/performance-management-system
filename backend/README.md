@@ -4,18 +4,16 @@ The PMS API: a NestJS 12 service with JWT authentication, employee records, KPI 
 
 ## Overview
 
-- Every route except sign-up, register, login, and refresh-token needs a bearer token (`JwtAuthGuard`).
+- Every route except login and refresh-token needs a bearer token (`JwtAuthGuard`).
 - Employee reads of a single record, create, and update need the admin role (`AdminRoleGuard`).
 - Request bodies are validated with class-validator. The global `ValidationPipe` strips unknown fields and rejects extra ones (`whitelist` and `forbidNonWhitelisted`).
-- The API connects to two databases: a main PostgreSQL database that it owns, and a read-only SQL Server database from HRDotNet (`secondaryDB`).
+- The API connects to one PostgreSQL database. Auth and employee data live in the `pms` schema.
 - Swagger UI is at `/swagger`.
 
 ## Endpoints
 
 | Method and path                                | Purpose                                                   |
 | ---------------------------------------------- | --------------------------------------------------------- |
-| `POST /auth/sign-up`                           | Create a login for an existing employee code              |
-| `POST /auth/register`                          | Register an HRDotNet user with the server-assigned employee role |
 | `POST /auth/login`                             | Log in with an email or username. Returns `{ accessToken, expiresIn }` |
 | `POST /auth/refresh-token`                     | Exchange a valid access token for a new one               |
 | `GET /auth/me`                                 | The authenticated user (`userId`, `email`, `username`)    |
@@ -31,11 +29,9 @@ The PMS API: a NestJS 12 service with JWT authentication, employee records, KPI 
 
 `GET /employees?page=1&pageSize=20` returns `{ items, page, pageSize, pageCount, total }`. Page numbers start at 1. The default page size is 20 and the maximum is 100. The API orders rows by employee ID. An empty result set has a page count of 0. A page past the end returns empty `items` with the requested page number and the full counts.
 
-`POST /auth/register` uses the `employee` code in `public.user_role`. Configure that role with an ID other than the reserved admin ID before enabling self-registration.
-
 ## Tech Stack
 
-NestJS 12 (Express), TypeORM 1.1 (a `postgres` and an `mssql` connection), Passport JWT, `@nestjs/swagger`, bcryptjs, class-validator and class-transformer, `@nestjs/observe`. ESM modules (`"type": "module"`). Tests use Vitest. Lint uses oxlint.
+NestJS 12 (Express), TypeORM 1.1 (one `postgres` connection), Passport JWT, `@nestjs/swagger`, bcryptjs, class-validator and class-transformer, `@nestjs/observe`. ESM modules (`"type": "module"`). Tests use Vitest. Lint uses oxlint.
 
 ## Architecture
 
@@ -62,13 +58,11 @@ A controller parses the request and maps the status. A service holds the rules a
 
 ### Notes on the databases
 
-`backend/package.json` declares the `mssql` driver but not `pg`, which the `postgres` connection loads. The workspace install makes `pg` resolvable today because `@pms/database` depends on it. Add `pg` to this package.
-
-The main connection sets `synchronize: true`, so TypeORM creates and alters tables from the entities when the app starts. The repository also holds `packages/database/schema.sql`. The two are separate definitions of the same tables. See the schema ownership note in [docs/workspace-blueprint.md](../docs/workspace-blueprint.md).
+The connection sets `synchronize: false`. `packages/database/schema.sql` owns the tables, and the entities map them without changing them.
 
 ## Prerequisites
 
-Node.js 24, pnpm 12.14.0, a PostgreSQL server, and access to the HRDotNet SQL Server. The app throws at startup when `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`, or `DB_DATABASE` is missing.
+Node.js 24, pnpm 12.14.0, and a PostgreSQL server with `packages/database/schema.sql` applied. The app throws at startup when `JWT_ACCESS_SECRET` is missing or blank.
 
 ## Configuration
 
@@ -83,14 +77,8 @@ cp .env.example .env
 | `POSTGRES_PORT`                           | `5433`       | Main database port                   |
 | `POSTGRES_DB`                             | `postgres`   | Main database name                   |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`      | `postgres`, empty | Main database login             |
-| `DB_HOST`, `DB_DATABASE`                  | none, required | HRDotNet SQL Server                |
-| `DB_PORT`                                 | `1433`       | HRDotNet SQL Server port             |
-| `DB_USERNAME`, `DB_PASSWORD`              | none, required | HRDotNet SQL Server login          |
-| `DB_ENCRYPT`, `DB_TRUST_SERVER_CERTIFICATE` | unset      | Set to `true` to turn them on        |
-| `DB_CONNECTION_TIMEOUT`, `DB_REQUEST_TIMEOUT` | `30000`  | Milliseconds                         |
 | `JWT_ACCESS_SECRET`                       | none, required | Secret used to sign and verify access tokens |
 
-`.env.example` does not list the `POSTGRES_*` variables. Add them.
 
 ## Running the Project
 

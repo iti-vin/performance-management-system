@@ -19,5 +19,5 @@ The root instructions apply to this workspace.
 ## Authorization and data
 
 - Enforce authorization at the API boundary. Apply `auth-architecture` to auth and session changes when available.
-- Keep HRDotNet MSSQL access read-only. Use transactions for multi-step PostgreSQL writes, parameterize queries, and avoid N+1 access.
+- Use transactions for multi-step PostgreSQL writes, parameterize queries, and avoid N+1 access.
 - Follow the root security review workflow when completing a module. Coordinate backend changes with its owner before merge.

@@ -12,17 +12,6 @@ const envSchema = z.looseObject({
   POSTGRES_USER: z.string().default("postgres"),
   POSTGRES_PASSWORD: z.string().default(""),
 
-  // Secondary database (SQL Server / HRDotNet, read-only)
-  DB_HOST: z.string().min(1),
-  DB_PORT: z.coerce.number().default(1433),
-  DB_DATABASE: z.string().min(1),
-  DB_USERNAME: z.string().min(1),
-  DB_PASSWORD: z.string().min(1),
-  DB_ENCRYPT: z.string().optional(),
-  DB_TRUST_SERVER_CERTIFICATE: z.string().optional(),
-  DB_CONNECTION_TIMEOUT: z.coerce.number().default(30000),
-  DB_REQUEST_TIMEOUT: z.coerce.number().default(30000),
-
   JWT_ACCESS_SECRET: z.string().refine((secret) => secret.trim().length > 0, "Must not be blank"),
 });
 
