@@ -21,7 +21,6 @@ import { KpiIndicatorScale } from "./modules/kpi-goals/entities/kpi-indicator-sc
 import { KpiIndicatorMatrixRow } from "./modules/kpi-goals/entities/kpi-indicator-matrix-row.entity.js";
 import { KpiIndicatorMatrixColumn } from "./modules/kpi-goals/entities/kpi-indicator-matrix-column.entity.js";
 import { KpiIndicatorMatrixCell } from "./modules/kpi-goals/entities/kpi-indicator-matrix-cell.entity.js";
-import { HREmployee, HREmploymentRecord, HRUser } from "./modules/auth/entities/hrdotnet.entity.js";
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -58,38 +57,6 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
         // packages/database/schema owns the tables. Never let TypeORM alter them.
         synchronize: false,
       }),
-    }),
-
-    // SECONDARY DATABASE (MSSQL / HRDotNet, read-only)
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      name: "secondaryDB",
-      // The required variables and the timeouts are checked in config/env.config.ts.
-      useFactory: (config: ConfigService<Env, true>) => {
-        const connectTimeout = config.get("DB_CONNECTION_TIMEOUT", { infer: true });
-        const requestTimeout = config.get("DB_REQUEST_TIMEOUT", { infer: true });
-
-        return {
-          type: "mssql" as const,
-          host: config.get("DB_HOST", { infer: true }),
-          port: config.get("DB_PORT", { infer: true }),
-          username: config.get("DB_USERNAME", { infer: true }),
-          password: config.get("DB_PASSWORD", { infer: true }),
-          database: config.get("DB_DATABASE", { infer: true }),
-          options: {
-            encrypt: config.get("DB_ENCRYPT", { infer: true }) === "true",
-            trustServerCertificate: config.get("DB_TRUST_SERVER_CERTIFICATE", { infer: true }) === "true",
-            connectTimeout,
-            requestTimeout,
-          },
-          connectionTimeout: connectTimeout,
-          requestTimeout,
-          pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
-          entities: [HREmployee, HREmploymentRecord, HRUser],
-          synchronize: false,
-        };
-      },
     }),
 
     // LIST OF MODULES
