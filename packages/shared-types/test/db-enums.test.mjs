@@ -11,6 +11,10 @@ const schemaSql = readSchema();
 // [table, column, exported constant, values the DTOs keep that the CHECK does not list]
 const PAIRS = [
   ["employees", "status", "EMPLOYEE_STATUSES", []],
+  ["employees", "employment_status", "EMPLOYMENT_STATUSES", []],
+  ["employees", "gender", "GENDERS", []],
+  ["employees", "marital_status", "MARITAL_STATUSES", []],
+  ["employees", "blood_type", "BLOOD_TYPES", []],
   ["manager_assignments", "status", "MANAGER_ASSIGNMENT_STATUSES", []],
   ["kpi_goal_templates", "status", "TEMPLATE_VERSION_STATUSES", []],
   ["kpi_indicators", "direction", "KPI_DIRECTIONS", []],

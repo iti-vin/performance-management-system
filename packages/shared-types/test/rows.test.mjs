@@ -5,16 +5,38 @@ import { test } from "node:test";
 
 import * as shared from "../dist/index.js";
 
-test("companies row accepts a bigint id as a string", () => {
-  const row = shared.companiesRowSchema.parse({
-    companyId: "12",
-    name: "HRDotNet",
-    isDemoMode: false,
-    demoDate: null,
+test("employees row accepts a bigint id as a string and the directory codes", () => {
+  const row = shared.employeesRowSchema.parse({
+    guid: null,
+    id: "21",
+    code: "EMP-001",
+    email: "employee1@example.invalid",
+    firstName: "Juan",
+    lastName: "Dela Cruz",
+    hrdotnetId: "1",
+    company: "Mayon Consolidated Inc.",
+    position: null,
+    division: null,
+    department: "Engineering",
+    branch: "Main",
+    employmentStatus: "regular",
+    status: "active",
     createdAt: "2026-11-10T08:00:00+08:00",
     updatedAt: "2026-11-10T08:00:00+08:00",
+    middleName: null,
+    suffix: null,
+    mobileNumber: null,
+    gender: "male",
+    birthDate: "1995-03-14",
+    placeOfBirth: null,
+    maritalStatus: "single",
+    nationality: null,
+    religion: null,
+    bloodType: "O+",
+    photoUrl: null,
   });
-  assert.equal(row.companyId, 12);
+  assert.equal(row.id, 21);
+  assert.throws(() => shared.employeesRowSchema.parse({ ...row, employmentStatus: "Regular" }));
 });
 
 test("cycles row accepts numeric weights as strings", () => {

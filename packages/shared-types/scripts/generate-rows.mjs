@@ -24,6 +24,10 @@ const CHECK_ONLY = process.argv.includes("--check");
 // "table.column" of a CHECK ... IN (...) column -> the enum schema in src/domain.
 const ENUM_COLUMNS = {
   "employees.status": "employeeStatusSchema",
+  "employees.employment_status": "employmentStatusSchema",
+  "employees.gender": "genderSchema",
+  "employees.marital_status": "maritalStatusSchema",
+  "employees.blood_type": "bloodTypeSchema",
   "manager_assignments.status": "managerAssignmentStatusSchema",
   "kpi_goal_templates.status": "templateVersionStatusSchema",
   "kpi_indicators.direction": "kpiDirectionSchema",
