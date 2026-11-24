@@ -16,7 +16,7 @@ describe("CompanyResolver", () => {
 
   beforeEach(() => {
     findUser.mockReset().mockResolvedValue(USER);
-    findByUser.mockReset().mockResolvedValue({ employeeCode: "EMP-001", hrdotnetId: "1" });
+    findByUser.mockReset().mockResolvedValue({ company: "Example Company", guid: GUID });
     query.mockReset().mockResolvedValue([{ company_id: "1" }]);
     resolver = new CompanyResolver(
       { findOne: findUser } as unknown as Repository<User>,
@@ -25,75 +25,31 @@ describe("CompanyResolver", () => {
     );
   });
 
-  it("maps the account to a company through the HRDotNet id", async () => {
+  it("maps the company name of the account's pms.employees row to its pms.companies id", async () => {
     await expect(resolver.resolveCompanyId("user-1")).resolves.toBe(1);
 
-    expect(query).toHaveBeenCalledWith(expect.stringContaining("hrdotnet_id"), ["1"]);
-  });
-
-  it("falls back to the employee code when there is no HRDotNet id", async () => {
-    findByUser.mockResolvedValue({ employeeCode: "EMP-001", hrdotnetId: null });
-
-    await resolver.resolveCompanyId("user-1");
-
-    expect(query).toHaveBeenCalledWith(expect.stringContaining("code"), ["EMP-001"]);
-  });
-
-  it("tries the employee code when the HRDotNet id finds no row", async () => {
-    query.mockResolvedValueOnce([]).mockResolvedValueOnce([{ company_id: "1" }]);
-
-    await expect(resolver.resolveCompanyId("user-1")).resolves.toBe(1);
-
-    expect(query).toHaveBeenNthCalledWith(1, expect.stringContaining("hrdotnet_id"), ["1"]);
-    expect(query).toHaveBeenNthCalledWith(2, expect.stringContaining("code"), ["EMP-001"]);
+    expect(findByUser).toHaveBeenCalledWith(USER);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("pms.companies"), ["Example Company"]);
   });
 
   describe("resolveAccount", () => {
     it("returns the company and the GUID of the employee row: the actor of a write", async () => {
-      query.mockResolvedValue([{ company_id: "1", guid: GUID }]);
-
-      await expect(resolver.resolveAccount("user-1")).resolves.toEqual({
-        companyId: 1,
-        actorId: GUID,
-      });
+      await expect(resolver.resolveAccount("user-1")).resolves.toEqual({ companyId: 1, actorId: GUID });
     });
 
     it("returns no actor when the employee row has no GUID", async () => {
-      query.mockResolvedValue([{ company_id: "1", guid: null }]);
+      findByUser.mockResolvedValue({ company: "Example Company", guid: null });
 
-      await expect(resolver.resolveAccount("user-1")).resolves.toEqual({
-        companyId: 1,
-        actorId: null,
-      });
-    });
-
-    it("returns no actor when two employee rows of one company match", async () => {
-      query.mockResolvedValue([
-        { company_id: "1", guid: GUID },
-        { company_id: "1", guid: "00000000-0000-0000-0000-000000000022" },
-      ]);
-
-      await expect(resolver.resolveAccount("user-1")).resolves.toEqual({
-        companyId: 1,
-        actorId: null,
-      });
-    });
-
-    it("keeps the rule that one account belongs to one company", async () => {
-      query.mockResolvedValue([
-        { company_id: "1", guid: GUID },
-        { company_id: "2", guid: GUID },
-      ]);
-
-      await expect(resolver.resolveAccount("user-1")).rejects.toThrow(ForbiddenException);
+      await expect(resolver.resolveAccount("user-1")).resolves.toEqual({ companyId: 1, actorId: null });
     });
   });
 
   it.each([
     ["no user row", () => findUser.mockResolvedValue(null)],
     ["no employee row", () => findByUser.mockResolvedValue(null)],
-    ["no pms.employees row", () => query.mockResolvedValue([])],
-    ["more than one company", () => query.mockResolvedValue([{ company_id: "1" }, { company_id: "2" }])],
+    ["no company with that name", () => query.mockResolvedValue([])],
+    ["two companies with that name", () => query.mockResolvedValue([{ company_id: "1" }, { company_id: "2" }])],
   ])("refuses with %s", async (_label, arrange) => {
     arrange();
 

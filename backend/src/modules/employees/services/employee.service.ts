@@ -19,13 +19,19 @@ export class EmployeeService {
 
   async create(dto: CreateEmployeeDto): Promise<EmployeeDomain> {
     const entity = this.employees.create({
+      id: dto.id,
       guid: randomUUID(),
       hrdotnetId: dto.hrdotnetId ?? null,
       email: dto.email,
       employeeCode: dto.employeeCode,
       firstName: dto.firstName,
       lastName: dto.lastName,
-      userRoleId: dto.userRoleId,
+      company: dto.company,
+      position: dto.position ?? null,
+      division: dto.division ?? null,
+      department: dto.department,
+      branch: dto.branch,
+      employmentStatus: dto.employmentStatus,
       status: dto.status ?? EmployeeStatus.ACTIVE,
     });
     return this.employees.save(entity);
@@ -38,7 +44,12 @@ export class EmployeeService {
     if (dto.employeeCode !== undefined) entity.employeeCode = dto.employeeCode;
     if (dto.firstName !== undefined) entity.firstName = dto.firstName;
     if (dto.lastName !== undefined) entity.lastName = dto.lastName;
-    if (dto.userRoleId !== undefined) entity.userRoleId = dto.userRoleId;
+    if (dto.company !== undefined) entity.company = dto.company;
+    if (dto.position !== undefined) entity.position = dto.position;
+    if (dto.division !== undefined) entity.division = dto.division;
+    if (dto.department !== undefined) entity.department = dto.department;
+    if (dto.branch !== undefined) entity.branch = dto.branch;
+    if (dto.employmentStatus !== undefined) entity.employmentStatus = dto.employmentStatus;
     if (dto.status !== undefined) entity.status = dto.status;
     return this.employees.save(entity);
   }
@@ -62,7 +73,7 @@ export class EmployeeService {
       take: pageSize,
     });
     return {
-      items: rows.map(({ userRoleId: _userRoleId, hrdotnetId: _hrdotnetId, ...row }) => row),
+      items: rows.map(({ hrdotnetId: _hrdotnetId, ...row }) => row),
       page,
       pageSize,
       pageCount: Math.ceil(total / pageSize),

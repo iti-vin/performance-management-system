@@ -8,14 +8,12 @@ import { AuthService } from "./services/auth.service.js";
 import { AccountRegistrationService } from "./services/account-registration.service.js";
 import { JwtStrategy } from "./strategies/jwt.strategy.js";
 import { User } from "./entities/user.entity.js";
-import { Employee } from "./entities/employee.entity.js";
 import { UserRole } from "./entities/user-role.entity.js";
-import { HREmployee, HREmploymentRecord, HRUser } from "./entities/hrdotnet.entity.js";
+import { EmployeeDomain } from "../employees/entities/employee-domain.entity.js";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Employee, UserRole]),
-    TypeOrmModule.forFeature([HREmployee, HREmploymentRecord, HRUser], "secondaryDB"),
+    TypeOrmModule.forFeature([User, EmployeeDomain, UserRole]),
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

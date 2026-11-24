@@ -1,10 +1,10 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from "typeorm";
 
 export const ADMIN_ROLE_ID = "1";
 
-@Entity({ name: "user_role" })
+@Entity({ name: "user_role", schema: "pms" })
 export class UserRole {
-  @PrimaryGeneratedColumn({ name: "user_role_id", type: "bigint" })
+  @PrimaryColumn({ name: "id", type: "bigint" })
   id: string;
 
   @Column({ name: "code", type: "text", unique: true })

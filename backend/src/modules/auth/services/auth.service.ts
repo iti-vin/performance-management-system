@@ -11,7 +11,7 @@ import { roleCodeSchema, type CurrentUserDto } from "@pms/shared-types";
 
 // Entities
 import { User } from "../entities/user.entity.js";
-import { Employee } from "../entities/employee.entity.js";
+import { EmployeeDomain } from "../../employees/entities/employee-domain.entity.js";
 import { UserRole } from "../entities/user-role.entity.js";
 
 const MAX_FAILED_LOGINS = 5;
@@ -24,8 +24,8 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly users: Repository<User>,
-    @InjectRepository(Employee)
-    private readonly employees: Repository<Employee>,
+    @InjectRepository(EmployeeDomain)
+    private readonly employees: Repository<EmployeeDomain>,
     @InjectRepository(UserRole)
     private readonly userRoles: Repository<UserRole>,
 
@@ -68,17 +68,16 @@ export class AuthService {
   }
 
   /**
-   * The account behind a token. The role is read from the employee record,
-   * which is the one AdminRoleGuard checks, so the menu a user sees matches
-   * what the API lets that user do. An account with no employee record uses
-   * its own role.
+   * The account behind a token. The role is the account role, the one
+   * AdminRoleGuard checks, so the menu a user sees matches what the API lets
+   * that user do. pms.employees has no role column.
    */
   async getCurrentUser(userId: string): Promise<CurrentUserDto> {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException("User not found");
 
     const employee = await this.employees.findOne({ where: { id: user.employeeId } });
-    const role = await this.userRoles.findOne({ where: { id: employee?.userRoleId ?? user.userRoleId } });
+    const role = await this.userRoles.findOne({ where: { id: user.userRoleId } });
     const code = roleCodeSchema.safeParse(role?.code);
     if (!code.success) throw new ForbiddenException("This account has no recognized role");
 
@@ -87,7 +86,7 @@ export class AuthService {
       email: user.email || null,
       username: user.username || null,
       role: code.data,
-      employeeCode: employee?.code ?? null,
+      employeeCode: employee?.employeeCode ?? null,
       firstName: employee?.firstName ?? null,
       lastName: employee?.lastName ?? null,
     };

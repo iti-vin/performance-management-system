@@ -45,13 +45,20 @@ describe("EmployeeService", () => {
   });
 
   describe("create", () => {
+    const directory = {
+      company: "Example Company",
+      department: "Finance",
+      branch: "Main",
+      employmentStatus: "regular",
+    } as const;
     const dto: CreateEmployeeDto = {
+      id: "101",
       hrdotnetId: undefined,
       email: "juan@example.com",
       employeeCode: "EMP-001",
       firstName: "Juan",
       lastName: "Dela Cruz",
-      userRoleId: "2",
+      ...directory,
       status: EmployeeStatus.ACTIVE,
     };
 
@@ -63,7 +70,7 @@ describe("EmployeeService", () => {
         employeeCode: dto.employeeCode,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        userRoleId: "2",
+        ...directory,
         status: dto.status,
       };
 
@@ -74,26 +81,31 @@ describe("EmployeeService", () => {
 
       expect(repository.create).toHaveBeenCalledWith(
         expect.objectContaining({
+          id: "101",
           hrdotnetId: null,
           email: dto.email,
           employeeCode: dto.employeeCode,
           firstName: dto.firstName,
           lastName: dto.lastName,
-          userRoleId: "2",
+          ...directory,
+          position: null,
+          division: null,
           status: dto.status,
           guid: expect.any(String),
         }),
       );
+      expect(repository.create).toHaveBeenCalledWith(expect.not.objectContaining({ userRoleId: expect.anything() }));
       expect(result).toBe(savedEntity);
     });
 
     it("should default status to active when omitted", async () => {
       const dtoNoStatus: CreateEmployeeDto = {
+        id: "102",
         email: "juan@example.com",
         employeeCode: "EMP-002",
         firstName: "Juan",
         lastName: "Dela Cruz",
-        userRoleId: "2",
+        ...directory,
       };
 
       vi.spyOn(repository, "create").mockImplementation((input) => input as EmployeeDomain);
@@ -197,10 +209,26 @@ describe("EmployeeService", () => {
         firstName: "Juan",
         lastName: "Dela Cruz",
         hrdotnetId: "789",
-        userRoleId: "2",
+        company: "Example Company",
+        position: null,
+        division: null,
+        department: "Finance",
+        branch: "Main",
+        employmentStatus: "regular",
         status: EmployeeStatus.ACTIVE,
         createdAt: new Date(),
         updatedAt: new Date(),
+        middleName: null,
+        suffix: null,
+        mobileNumber: null,
+        gender: null,
+        birthDate: null,
+        placeOfBirth: null,
+        maritalStatus: null,
+        nationality: null,
+        religion: null,
+        bloodType: null,
+        photoUrl: null,
       };
 
       vi.spyOn(repository, "findAndCount").mockResolvedValue([[row], 41]);
@@ -217,6 +245,10 @@ describe("EmployeeService", () => {
             email: row.email,
             firstName: row.firstName,
             lastName: row.lastName,
+            company: row.company,
+            department: row.department,
+            branch: row.branch,
+            employmentStatus: row.employmentStatus,
             status: row.status,
           }),
         ],
@@ -225,7 +257,6 @@ describe("EmployeeService", () => {
         pageCount: 3,
         total: 41,
       });
-      expect(result.items[0]).not.toHaveProperty("userRoleId");
       expect(result.items[0]).not.toHaveProperty("hrdotnetId");
     });
 

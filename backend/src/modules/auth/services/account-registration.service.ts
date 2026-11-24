@@ -1,129 +1,31 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  ServiceUnavailableException,
-} from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
-import { type RegisterRequestDto, type RoleCode } from "@pms/shared-types";
+import { Repository } from "typeorm";
+import { type RoleCode } from "@pms/shared-types";
 
 // Entities
 import { User } from "../entities/user.entity.js";
-import { Employee } from "../entities/employee.entity.js";
 import { ADMIN_ROLE_ID, UserRole } from "../entities/user-role.entity.js";
-import { HREmployee, HREmploymentRecord, HRUser } from "../entities/hrdotnet.entity.js";
-import { randomUUID } from "crypto";
+import { EmployeeDomain } from "../../employees/entities/employee-domain.entity.js";
 
-/** The role of a self-registered account: the user row of public.user_role. */
+/** The role of a self-created account: the USER row of pms.user_role. */
 const DEFAULT_ROLE_CODE: RoleCode = "USER";
 
+/**
+ * Creates a PMS login for an employee already in pms.employees.
+ * No route calls it since the sign-up and register routes were removed.
+ */
 @Injectable()
 export class AccountRegistrationService {
   constructor(
     @InjectRepository(User)
     private readonly users: Repository<User>,
-    @InjectRepository(Employee)
-    private readonly employees: Repository<Employee>,
+    @InjectRepository(EmployeeDomain)
+    private readonly employees: Repository<EmployeeDomain>,
     @InjectRepository(UserRole)
     private readonly userRoles: Repository<UserRole>,
-
-    @InjectRepository(HREmployee, "secondaryDB")
-    private readonly hrEmployees: Repository<HREmployee>,
-    @InjectRepository(HREmploymentRecord, "secondaryDB")
-    private readonly hrEmploymentRecord: Repository<HREmploymentRecord>,
-    @InjectRepository(HRUser, "secondaryDB")
-    private readonly hrUser: Repository<HRUser>,
-
-    private readonly dataSource: DataSource,
   ) {}
-
-  async register({ employeeCode, password, confirmPassword }: RegisterRequestDto) {
-    // validate passwords
-    if (password !== confirmPassword) {
-      throw new BadRequestException("Passwords do not match");
-    }
-
-    // find employee in hrdotnet database
-    const hrEmployee = await this.hrEmployees.findOne({
-      where: { code: employeeCode },
-    });
-
-    if (!hrEmployee) {
-      throw new NotFoundException("This Employee Code doesn't exist in HRDotNet V2");
-    }
-
-    // fetch related HR records concurrently
-    const [hrEmploymentRecord, hrUser] = await Promise.all([
-      this.hrEmploymentRecord.findOne({
-        where: { employeeId: hrEmployee.id },
-      }),
-      this.hrUser.findOne({
-        where: { employeeId: hrEmployee.id },
-      }),
-    ]);
-
-    if (!hrUser) {
-      throw new NotFoundException("HRDotNet user record not found");
-    }
-
-    if (!hrEmploymentRecord) {
-      throw new NotFoundException("HRDotNet employment record not found");
-    }
-
-    const role = await this.userRoles.findOne({ where: { code: DEFAULT_ROLE_CODE } });
-    if (!role || role.id === ADMIN_ROLE_ID) {
-      throw new ServiceUnavailableException("Employee registration role is unavailable");
-    }
-
-    // hash password
-    const hashed = await bcrypt.hash(password, 10);
-
-    // save records in primary database
-    const result = await this.dataSource.transaction(async (manager) => {
-      const employee = manager.create(Employee, {
-        guid: randomUUID(),
-        code: hrEmployee.code,
-        email: hrEmployee.email ?? "",
-        firstName: hrEmployee.firstName,
-        lastName: hrEmployee.lastName,
-        hrdotnetId: String(hrUser.hrdotnetId),
-        userRoleId: role.id,
-        status: "active",
-      });
-
-      const savedEmployee = await manager.save(Employee, employee);
-
-      const user = manager.create(User, {
-        employeeId: String(savedEmployee.id),
-        userRoleId: role.id,
-        email: hrEmployee.email ?? "",
-        username: hrUser.username,
-        passwordHash: hashed,
-      });
-
-      await manager.save(User, user);
-
-      return savedEmployee;
-    });
-
-    return {
-      message: "Succesfully Registered your HRDotNet Account on PMS",
-      data: {
-        ...this.toEmployeeDto({
-          code: result.code,
-          firstName: result.firstName,
-          lastName: result.lastName,
-          company: hrEmploymentRecord.company,
-          department: hrEmploymentRecord.department,
-          position: hrEmploymentRecord.position,
-          status: "active",
-        }),
-      },
-    };
-  }
 
   async signUp(code: string, identifier: string, password: string, confirmPassword: string) {
     // validate password
@@ -138,7 +40,7 @@ export class AccountRegistrationService {
     }
 
     // checking if employee code is exist
-    const employee = await this.employees.findOne({ where: { code } });
+    const employee = await this.employees.findOne({ where: { employeeCode: code } });
     if (!employee) {
       throw new BadRequestException("Employee Code doesn't exist in the employee table");
     }
@@ -153,10 +55,16 @@ export class AccountRegistrationService {
     const taken = await this.users.findOne({ where: [{ username }, { email: employee.email }] });
     if (taken) throw new ConflictException("This username or email is already in use");
 
+    // pms.employees has no role: a new account gets the employee role, never admin.
+    const role = await this.userRoles.findOne({ where: { code: DEFAULT_ROLE_CODE } });
+    if (!role || role.id === ADMIN_ROLE_ID) {
+      throw new ServiceUnavailableException("Employee registration role is unavailable");
+    }
+
     // The account email is the employee's email, so it is never blank.
     const user = this.users.create({
       employeeId: employee.id,
-      userRoleId: employee.userRoleId,
+      userRoleId: role.id,
       email: employee.email,
       username,
       passwordHash: await bcrypt.hash(password, 10),
@@ -175,36 +83,14 @@ export class AccountRegistrationService {
     return {
       message: "Successfully Created",
       data: {
-        ...this.toEmployeeDto({
-          code: employee.code,
-          firstName: employee.firstName,
-          lastName: employee.lastName,
-          company: "",
-          department: "",
-          position: "",
-          status: "active",
-        }),
+        code: employee.employeeCode,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        company: employee.company,
+        department: employee.department,
+        position: employee.position,
+        status: employee.status,
       },
-    };
-  }
-
-  private toEmployeeDto(record: {
-    code: string;
-    firstName: string;
-    lastName: string;
-    company: string | null;
-    department: string | null;
-    position: string | null;
-    status: string;
-  }) {
-    return {
-      code: record.code ?? null,
-      firstName: record.firstName,
-      lastName: record.lastName,
-      company: record.company,
-      department: record.department,
-      position: record.position,
-      status: record.status ?? null,
     };
   }
 }

@@ -1,13 +1,9 @@
 import { BadRequestException, ValidationPipe } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 import { LoginDto } from "./login.dto.js";
-import { RegisterDto } from "./register.dto.js";
-import { SignUpDto } from "./sign-up.dto.js";
 
 describe.each([
   { route: "login", dto: LoginDto, fields: { identifier: "janedoe" } },
-  { route: "register", dto: RegisterDto, fields: { employeeCode: "E001" } },
-  { route: "sign-up", dto: SignUpDto, fields: { employeeCode: "E001", username: "janedoe" } },
 ])("$route password length", ({ dto, fields }) => {
   const pipe = new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true });
 

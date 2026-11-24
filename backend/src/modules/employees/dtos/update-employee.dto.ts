@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { IsIn, IsNotEmpty, IsOptional, IsString } from "class-validator";
 import { EmployeeStatus } from "../types/employee-status.enum.js";
+import { EMPLOYMENT_STATUSES, type EmploymentStatus } from "@pms/shared-types";
 
 export class UpdateEmployeeDto {
   @ApiPropertyOptional({ example: "789" })
@@ -32,10 +33,38 @@ export class UpdateEmployeeDto {
   @IsNotEmpty()
   lastName?: string;
 
-  @ApiPropertyOptional({ example: "1" })
+  @ApiPropertyOptional({ example: "Example Company" })
   @IsOptional()
   @IsString()
-  userRoleId?: string;
+  @IsNotEmpty()
+  company?: string;
+
+  @ApiPropertyOptional({ example: "Analyst" })
+  @IsOptional()
+  @IsString()
+  position?: string | null;
+
+  @ApiPropertyOptional({ example: "Operations" })
+  @IsOptional()
+  @IsString()
+  division?: string | null;
+
+  @ApiPropertyOptional({ example: "Finance" })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  department?: string;
+
+  @ApiPropertyOptional({ example: "Main" })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  branch?: string;
+
+  @ApiPropertyOptional({ enum: EMPLOYMENT_STATUSES, example: "regular" })
+  @IsOptional()
+  @IsIn(EMPLOYMENT_STATUSES)
+  employmentStatus?: EmploymentStatus;
 
   @ApiPropertyOptional({ enum: EmployeeStatus, example: EmployeeStatus.ACTIVE })
   @IsOptional()

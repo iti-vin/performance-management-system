@@ -1,8 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsIn, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsIn, IsNotEmpty, IsOptional, IsString, Matches } from "class-validator";
 import { EmployeeStatus } from "../types/employee-status.enum.js";
+import { EMPLOYMENT_STATUSES, type EmploymentStatus } from "@pms/shared-types";
 
 export class CreateEmployeeDto {
+  // pms.employees.id has no default, so the caller sends it.
+  @ApiProperty({ example: "101" })
+  @IsString()
+  @Matches(/^[1-9][0-9]{0,17}$/, { message: "id must be a positive whole number" })
+  id: string;
+
   @ApiPropertyOptional({ example: "789" })
   @IsOptional()
   @IsString()
@@ -28,9 +35,34 @@ export class CreateEmployeeDto {
   @IsNotEmpty()
   lastName: string;
 
-  @ApiProperty({ example: "1" })
+  @ApiProperty({ example: "Example Company" })
   @IsString()
-  userRoleId: string;
+  @IsNotEmpty()
+  company: string;
+
+  @ApiPropertyOptional({ example: "Analyst" })
+  @IsOptional()
+  @IsString()
+  position?: string | null;
+
+  @ApiPropertyOptional({ example: "Operations" })
+  @IsOptional()
+  @IsString()
+  division?: string | null;
+
+  @ApiProperty({ example: "Finance" })
+  @IsString()
+  @IsNotEmpty()
+  department: string;
+
+  @ApiProperty({ example: "Main" })
+  @IsString()
+  @IsNotEmpty()
+  branch: string;
+
+  @ApiProperty({ enum: EMPLOYMENT_STATUSES, example: "regular" })
+  @IsIn(EMPLOYMENT_STATUSES)
+  employmentStatus: EmploymentStatus;
 
   @ApiPropertyOptional({ enum: EmployeeStatus, example: EmployeeStatus.ACTIVE })
   @IsOptional()

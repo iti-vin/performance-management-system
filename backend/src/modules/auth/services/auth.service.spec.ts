@@ -2,10 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
-  NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
-  ValidationPipe,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Test } from "@nestjs/testing";
@@ -13,46 +11,30 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import * as bcrypt from "bcryptjs";
 import { DataSource, type Repository } from "typeorm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RegisterDto } from "../dtos/register.dto.js";
-import { Employee } from "../entities/employee.entity.js";
-import { HREmployee, HREmploymentRecord, HRUser } from "../entities/hrdotnet.entity.js";
+import { EmployeeDomain } from "../../employees/entities/employee-domain.entity.js";
 import { UserRole } from "../entities/user-role.entity.js";
 import { User } from "../entities/user.entity.js";
 import type { JwtPayload } from "../types/jwt-payload.types.js";
 import { AuthService } from "./auth.service.js";
 import { AccountRegistrationService } from "./account-registration.service.js";
 
-const hrEmployee: HREmployee = {
-  id: "10",
-  code: "E001",
-  firstName: "Jane",
-  lastName: "Doe",
-  fullName: "Jane Doe",
-  email: "jane@example.com",
-};
-
-const hrEmploymentRecord: HREmploymentRecord = {
-  employeeId: hrEmployee.id,
-  company: "Example Company",
-  department: null,
-  position: "Analyst",
-};
-
-const hrUser: HRUser = {
-  employeeId: hrEmployee.id,
-  username: "janedoe",
-  hrdotnetId: "3",
-};
-
 const user: User = {
   id: "30",
   employeeId: "20",
   userRoleId: "2",
-  email: hrEmployee.email,
-  username: hrUser.username,
+  email: "jane@example.com",
+  username: "janedoe",
   passwordHash: "unused-test-hash",
   failedLoginAttempts: 0,
   loginLockedUntil: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+const employeeRole: UserRole = {
+  id: "3",
+  code: "USER",
+  name: "Employee",
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -64,22 +46,15 @@ describe("Auth services", () => {
     create: vi.fn(),
     save: vi.fn(),
   };
-  const employees = { findOne: vi.fn<Repository<Employee>["findOne"]>() };
+  const employees = { findOne: vi.fn<Repository<EmployeeDomain>["findOne"]>() };
   const roles = { findOne: vi.fn<Repository<UserRole>["findOne"]>() };
-  const hrEmployees = { findOne: vi.fn<Repository<HREmployee>["findOne"]>() };
-  const hrEmploymentRecords = { findOne: vi.fn<Repository<HREmploymentRecord>["findOne"]>() };
-  const hrUsers = { findOne: vi.fn<Repository<HRUser>["findOne"]>() };
   const jwt = {
     sign: vi.fn(() => "new-access-token"),
     verify: vi.fn((): JwtPayload => ({ sub: user.id, type: "access" })),
   };
-  const manager = {
-    getRepository: () => users,
-    create: vi.fn((_entity: typeof Employee | typeof User, data: Partial<Employee> | Partial<User>) => data),
-    save: vi.fn(),
-  };
+  const manager = { getRepository: () => users };
   const dataSource = {
-    transaction: vi.fn((run: (transactionManager: typeof manager) => Promise<Employee>) => run(manager)),
+    transaction: vi.fn((run: (transactionManager: typeof manager) => Promise<unknown>) => run(manager)),
   };
 
   let service: AuthService;
@@ -91,11 +66,8 @@ describe("Auth services", () => {
         AuthService,
         AccountRegistrationService,
         { provide: getRepositoryToken(User), useValue: users },
-        { provide: getRepositoryToken(Employee), useValue: employees },
+        { provide: getRepositoryToken(EmployeeDomain), useValue: employees },
         { provide: getRepositoryToken(UserRole), useValue: roles },
-        { provide: getRepositoryToken(HREmployee, "secondaryDB"), useValue: hrEmployees },
-        { provide: getRepositoryToken(HREmploymentRecord, "secondaryDB"), useValue: hrEmploymentRecords },
-        { provide: getRepositoryToken(HRUser, "secondaryDB"), useValue: hrUsers },
         { provide: JwtService, useValue: jwt },
         { provide: DataSource, useValue: dataSource },
       ],
@@ -187,149 +159,59 @@ describe("Auth services", () => {
     });
   });
 
-  describe("register", () => {
-    const password = "example-password";
-    const registration = { employeeCode: hrEmployee.code, password, confirmPassword: password };
-
-    beforeEach(() => {
-      roles.findOne.mockResolvedValue({
-        id: user.userRoleId,
-        code: "USER",
-        name: "Employee",
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      });
-      hrEmployees.findOne.mockResolvedValue(hrEmployee);
-      hrEmploymentRecords.findOne.mockResolvedValue(hrEmploymentRecord);
-      hrUsers.findOne.mockResolvedValue(hrUser);
-      manager.save.mockResolvedValueOnce({
-        id: user.employeeId,
-        code: hrEmployee.code,
-        firstName: hrEmployee.firstName,
-        lastName: hrEmployee.lastName,
-      });
-    });
-
-    it("accepts registration without a role field", async () => {
-      const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
-      const body = { employeeCode: hrEmployee.code, password, confirmPassword: password };
-
-      await expect(pipe.transform(body, { type: "body", metatype: RegisterDto })).resolves.toMatchObject(body);
-    });
-
-    it("assigns the employee role from the database to both records", async () => {
-      await registrationService.register(registration);
-
-      expect(roles.findOne).toHaveBeenCalledWith({ where: { code: "USER" } });
-      expect(manager.save).toHaveBeenNthCalledWith(
-        1,
-        Employee,
-        expect.objectContaining({ userRoleId: user.userRoleId }),
-      );
-      expect(manager.save).toHaveBeenNthCalledWith(2, User, expect.objectContaining({ userRoleId: user.userRoleId }));
-    });
-
-    it.each([
-      ["missing", null],
-      [
-        "assigned the reserved admin ID",
-        {
-          id: "1",
-          code: "USER",
-          name: "Employee",
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-        },
-      ],
-    ] as const)("stops registration when the employee role is %s", async (_reason, role) => {
-      roles.findOne.mockResolvedValue(role);
-
-      await expect(registrationService.register(registration)).rejects.toThrow(ServiceUnavailableException);
-      expect(dataSource.transaction).not.toHaveBeenCalled();
-    });
-
-    it("rejects a missing HRDotNet employee before opening a write transaction", async () => {
-      hrEmployees.findOne.mockResolvedValue(null);
-
-      await expect(registrationService.register(registration)).rejects.toThrow(NotFoundException);
-      expect(hrEmployees.findOne).toHaveBeenCalledWith({ where: { code: hrEmployee.code } });
-      expect(dataSource.transaction).not.toHaveBeenCalled();
-    });
-
-    it("propagates a duplicate email error from the write transaction", async () => {
-      const duplicateEmail = new Error("Duplicate email");
-      manager.save.mockRejectedValueOnce(duplicateEmail);
-
-      await expect(registrationService.register(registration)).rejects.toBe(duplicateEmail);
-      expect(manager.save).toHaveBeenCalledTimes(2);
-      expect(manager.save).toHaveBeenLastCalledWith(User, expect.objectContaining({ email: hrEmployee.email }));
-    });
-
-    it("returns the employee profile with HRDotNet employment details", async () => {
-      const result = await registrationService.register(registration);
-
-      expect(hrEmploymentRecords.findOne).toHaveBeenCalledWith({ where: { employeeId: hrEmployee.id } });
-      expect(result.data).toEqual({
-        code: hrEmployee.code,
-        firstName: hrEmployee.firstName,
-        lastName: hrEmployee.lastName,
-        company: hrEmploymentRecord.company,
-        department: null,
-        position: hrEmploymentRecord.position,
-        status: "active",
-      });
-    });
-
-    it("links the HRDotNet username to the saved employee", async () => {
-      await registrationService.register(registration);
-
-      expect(hrUsers.findOne).toHaveBeenCalledWith({ where: { employeeId: hrEmployee.id } });
-      expect(manager.save).toHaveBeenNthCalledWith(
-        1,
-        Employee,
-        expect.objectContaining({ code: hrEmployee.code, hrdotnetId: hrUser.hrdotnetId }),
-      );
-      expect(manager.save).toHaveBeenNthCalledWith(
-        2,
-        User,
-        expect.objectContaining({ employeeId: user.employeeId, username: hrUser.username }),
-      );
-    });
-  });
   describe("signUp", () => {
     const password = "password123";
     const employee = {
       id: "20",
-      code: "ITI-003",
+      employeeCode: "ITI-003",
       email: "employee@example.com",
       firstName: "Jane",
       lastName: "Doe",
-      userRoleId: "2",
-    } as Employee;
+    } as EmployeeDomain;
 
     beforeEach(() => {
       employees.findOne.mockResolvedValue(employee);
+      roles.findOne.mockResolvedValue(employeeRole);
       users.findOne.mockResolvedValue(null);
       users.create.mockImplementation((data: Partial<User>) => data);
     });
 
-    it("stores the employee email and the chosen username", async () => {
-      await registrationService.signUp(employee.code, "user", password, password);
+    it("stores the employee email, the chosen username, and the employee role", async () => {
+      await registrationService.signUp(employee.employeeCode, "user", password, password);
 
+      expect(employees.findOne).toHaveBeenCalledWith({ where: { employeeCode: employee.employeeCode } });
+      expect(roles.findOne).toHaveBeenCalledWith({ where: { code: "USER" } });
       expect(users.save).toHaveBeenCalledWith(
-        expect.objectContaining({ employeeId: employee.id, email: employee.email, username: "user" }),
+        expect.objectContaining({
+          employeeId: employee.id,
+          email: employee.email,
+          username: "user",
+          userRoleId: employeeRole.id,
+        }),
       );
+    });
+
+    it.each([
+      ["missing", null],
+      ["the reserved admin ID", { ...employeeRole, id: "1" }],
+    ] as const)("stops when the employee role is %s", async (_reason, role) => {
+      roles.findOne.mockResolvedValue(role);
+
+      await expect(registrationService.signUp(employee.employeeCode, "user", password, password)).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+      expect(users.save).not.toHaveBeenCalled();
     });
 
     it("rejects a username or email that another account already uses", async () => {
       users.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(user);
 
-      await expect(registrationService.signUp(employee.code, "user", password, password)).rejects.toBeInstanceOf(ConflictException);
+      await expect(registrationService.signUp(employee.employeeCode, "user", password, password)).rejects.toBeInstanceOf(ConflictException);
       expect(users.save).not.toHaveBeenCalled();
     });
 
     it("rejects an email address as the username", async () => {
-      await expect(registrationService.signUp(employee.code, "a@b.co", password, password)).rejects.toBeInstanceOf(
+      await expect(registrationService.signUp(employee.employeeCode, "a@b.co", password, password)).rejects.toBeInstanceOf(
         BadRequestException,
       );
       expect(users.save).not.toHaveBeenCalled();
@@ -338,17 +220,17 @@ describe("Auth services", () => {
     it("turns a unique violation from the save into a conflict", async () => {
       users.save.mockRejectedValue({ driverError: { code: "23505" } });
 
-      await expect(registrationService.signUp(employee.code, "user", password, password)).rejects.toBeInstanceOf(ConflictException);
+      await expect(registrationService.signUp(employee.employeeCode, "user", password, password)).rejects.toBeInstanceOf(ConflictException);
     });
   });
+
   describe("getCurrentUser", () => {
     const employee = {
       id: user.employeeId,
-      code: "ITI-003",
+      employeeCode: "ITI-003",
       firstName: "Jane",
       lastName: "Doe",
-      userRoleId: "2",
-    } as Employee;
+    } as EmployeeDomain;
     const managerRole = { id: "2", code: "MANAGER", name: "Manager" } as UserRole;
 
     beforeEach(() => {
@@ -367,15 +249,16 @@ describe("Auth services", () => {
         firstName: "Jane",
         lastName: "Doe",
       });
+      expect(employees.findOne).toHaveBeenCalledWith({ where: { id: user.employeeId } });
     });
 
-    it("reads the role of the employee record, the one the admin guard checks", async () => {
+    it("reads the role of the user account, the one the admin guard checks", async () => {
       await service.getCurrentUser(user.id);
 
-      expect(roles.findOne).toHaveBeenCalledWith({ where: { id: employee.userRoleId } });
+      expect(roles.findOne).toHaveBeenCalledWith({ where: { id: user.userRoleId } });
     });
 
-    it("falls back to the role of the user when no employee record exists", async () => {
+    it("returns null names when no employee record exists", async () => {
       employees.findOne.mockResolvedValue(null);
 
       const current = await service.getCurrentUser(user.id);

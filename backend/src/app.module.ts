@@ -55,7 +55,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
           KpiIndicatorMatrixCell,
           KpiIndicatorMatrixRow,
         ],
-        synchronize: true,
+        // packages/database/schema owns the tables. Never let TypeORM alter them.
+        synchronize: false,
       }),
     }),
 

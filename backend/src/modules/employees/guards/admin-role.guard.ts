@@ -3,14 +3,13 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "../../auth/entities/user.entity.js";
 import { ADMIN_ROLE_ID } from "../../auth/entities/user-role.entity.js";
-import { EmployeeService } from "../services/employee.service.js";
 
+/** Admin = the account role. pms.employees has no role column. */
 @Injectable()
 export class AdminRoleGuard implements CanActivate {
   constructor(
     @InjectRepository(User)
     private readonly users: Repository<User>,
-    private readonly employeeService: EmployeeService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -25,8 +24,7 @@ export class AdminRoleGuard implements CanActivate {
       throw new ForbiddenException("User account no longer exists");
     }
 
-    const employee = await this.employeeService.findByUser(user);
-    if (!employee || employee.userRoleId !== ADMIN_ROLE_ID) {
+    if (user.userRoleId !== ADMIN_ROLE_ID) {
       throw new ForbiddenException("Admin role required");
     }
 

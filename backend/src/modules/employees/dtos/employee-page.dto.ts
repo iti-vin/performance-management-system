@@ -3,7 +3,7 @@ import { EmployeeDomain } from "../entities/employee-domain.entity.js";
 
 export class EmployeePageDto {
   @ApiProperty({ type: [EmployeeDomain] })
-  items: Omit<EmployeeDomain, "userRoleId" | "hrdotnetId">[];
+  items: Omit<EmployeeDomain, "hrdotnetId">[];
 
   @ApiProperty({ example: 1, minimum: 1 })
   page: number;
