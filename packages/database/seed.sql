@@ -1,8 +1,9 @@
 -- Development fixtures only. Load after schema.sql in an isolated demo database.
--- Stable fixture IDs preserve cross-module references. No login accounts are seeded.
+-- Stable fixture IDs preserve cross-module references. seeds/users.sql adds development logins.
 
 BEGIN;
-\ir seeds/identity-and-directory.sql
+\ir seeds/employees.sql
+\ir seeds/users.sql
 \ir seeds/manager-assignments.sql
 \ir seeds/kpi-goals.sql
 \ir seeds/behavioral-assessments.sql

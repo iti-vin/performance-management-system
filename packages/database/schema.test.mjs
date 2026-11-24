@@ -168,3 +168,25 @@ test("KPI actuals allow one value per indicator in each accomplishment", () => {
   );
   assert.match(sql, /UNIQUE\s*\(accomplishment_id, indicator_id\)/);
 });
+
+test("the employee and user seeds load in foreign-key order and match the backend roles", () => {
+  const seed = readSeed();
+  const users = readFileSync(new URL("./schema/users.sql", import.meta.url), "utf8");
+
+  assert.ok(users.indexOf("pms.user_role (") < users.indexOf("pms.users ("));
+  assert.match(users, /user_role_id\s+bigint NOT NULL REFERENCES pms\.user_role\(id\)/);
+
+  assert.ok(seed.indexOf("INSERT INTO pms.employees") < seed.indexOf("INSERT INTO pms.users"));
+  assert.ok(seed.indexOf("INSERT INTO pms.user_role") < seed.indexOf("INSERT INTO pms.users"));
+  // ADMIN_ROLE_ID in the backend is "1"; the codes are ROLE_CODES in @pms/shared-types.
+  assert.match(seed, /\(1, 'ADMIN',/);
+  assert.match(seed, /\(2, 'MANAGER',/);
+  assert.match(seed, /\(3, 'USER',/);
+  // Other seeds refer to these employee GUIDs.
+  for (const guid of ["021", "022", "023"]) {
+    assert.match(seed, new RegExp("'00000000-0000-0000-0000-000000000" + guid + "', " + Number(guid)));
+  }
+  // Seeded accounts store bcrypt hashes, never a plain password.
+  assert.match(seed, /'\$2[aby]\$10\$[./A-Za-z0-9]{53}'/);
+  assert.doesNotMatch(seed, /INSERT INTO pms\.users \([^)]*\bpassword\b[^_]/);
+});

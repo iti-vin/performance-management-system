@@ -4,7 +4,6 @@
 
 BEGIN;
 CREATE SCHEMA IF NOT EXISTS pms;
-\ir schema/identity-and-directory.sql
 \ir schema/employees.sql
 \ir schema/manager-assignments.sql
 \ir schema/kpi-goals.sql
