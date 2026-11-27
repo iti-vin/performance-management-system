@@ -16,6 +16,8 @@ interface ConfirmationDialogProps {
   title: string;
   description: string;
   confirmLabel: string;
+  /** The words of the button that changes nothing. */
+  cancelLabel?: string;
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -25,6 +27,7 @@ export function ConfirmationDialog({
   title,
   description,
   confirmLabel,
+  cancelLabel = "Cancel",
   onClose,
   onConfirm,
 }: ConfirmationDialogProps) {
@@ -42,7 +45,7 @@ export function ConfirmationDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel className="min-h-pms-touch">
-            Cancel
+            {cancelLabel}
           </AlertDialogCancel>
           <AlertDialogAction className="min-h-pms-touch" onClick={onConfirm}>
             {confirmLabel}

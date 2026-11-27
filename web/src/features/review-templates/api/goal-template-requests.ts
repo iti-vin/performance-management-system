@@ -20,8 +20,13 @@ export function fetchGoalTemplates(accessToken: string) {
   return getRequest("kpi-goals", accessToken);
 }
 
-export function fetchGoalTemplate(accessToken: string, templateId: string) {
-  return getRequest(`kpi-goals/${templateId}`, accessToken);
+export function fetchGoalTemplate(accessToken: string, templateId: string, version?: number) {
+  const suffix = version ? `/versions/${version}` : "";
+  return getRequest(`kpi-goals/${templateId}${suffix}`, accessToken);
+}
+
+export function fetchGoalTemplateVersions(accessToken: string, templateId: string) {
+  return getRequest(`kpi-goals/${templateId}/versions`, accessToken);
 }
 
 export function fetchGoalTemplatePositions(accessToken: string) {
@@ -42,6 +47,10 @@ function postRequest(path: string, accessToken: string, body?: unknown) {
 
 export function postCreateGoalTemplate(accessToken: string, body: unknown) {
   return postRequest("kpi-goals/create", accessToken, body);
+}
+
+export function postArchiveGoalTemplate(accessToken: string, templateId: string) {
+  return postRequest(`kpi-goals/${templateId}/archived`, accessToken);
 }
 
 export function postPublishGoalTemplate(accessToken: string, templateId: string) {

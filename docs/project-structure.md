@@ -116,6 +116,7 @@ backend/
 │       │   │   ├── kpi-goals.controller.ts
 │       │   │   └── kpi-goals.controller.spec.ts
 │       │   ├── services/
+│       │   │   ├── publication-history.ts
 │       │   │   ├── company-resolver.service.ts      # Company and actor GUID of the signed-in account
 │       │   │   ├── company-resolver.service.spec.ts
 │       │   │   ├── kpi-goals.service.ts
@@ -135,6 +136,66 @@ backend/
 │       │   │   └── kpi-template-version.entity.ts
 │       │   └── types/
 │       │       └── template-tree.types.ts
+│       │
+│       ├── review-cycles/
+│       │   ├── review-cycles.module.ts
+│       │   ├── controllers/
+│       │   │   ├── accomplishments.controller.ts
+│       │   │   ├── accomplishments.controller.spec.ts
+│       │   │   ├── parsed-input.ts
+│       │   │   ├── review-cycles.controller.ts
+│       │   │   ├── review-cycles.controller.spec.ts
+│       │   │   ├── reviews.controller.ts
+│       │   │   └── reviews.controller.spec.ts
+│       │   ├── services/
+│       │   │   ├── accomplishments.service.ts
+│       │   │   ├── accomplishments.service.spec.ts
+│       │   │   ├── accomplishment-rules.ts
+│       │   │   ├── review-cycles.service.ts
+│       │   │   ├── cycle-facts.ts
+│       │   │   ├── cycle-readiness.ts
+│       │   │   ├── cycle-readiness.spec.ts
+│       │   │   ├── participant-resolver.ts
+│       │   │   ├── participant-resolver.spec.ts
+│       │   │   ├── review-cycles.service.spec.ts
+│       │   │   ├── reviews.service.ts
+│       │   │   ├── reviews.service.spec.ts
+│       │   │   ├── review-assessment.service.ts
+│       │   │   ├── review-assessment.service.spec.ts
+│       │   │   ├── review-answers.ts
+│       │   │   ├── review-stages.ts
+│       │   │   ├── review-reopening.ts
+│       │   │   ├── cycle-extension.ts
+│       │   │   ├── assert-open-cycle.ts
+│       │   │   ├── anonymity.ts
+│       │   │   ├── cycle-activation.service.ts
+│       │   │   ├── cycle-work.ts
+│       │   │   ├── result-snapshots.ts
+│       │   │   ├── cycle-attention.service.ts
+│       │   │   ├── cycle-history.service.ts
+│       │   │   ├── results.service.ts
+│       │   │   ├── review-feedback.ts
+│       │   │   ├── review-stage-cards.ts
+│       │   │   ├── scoring.ts
+│       │   │   └── viewer.ts
+│       │   ├── dtos/
+│       │   │   ├── cancel-review-cycle.dto.ts
+│       │   │   ├── create-review-cycle.dto.ts
+│       │   │   ├── extend-review-cycle.dto.ts
+│       │   │   ├── reopen-review.dto.ts
+│       │   │   └── review-cycle-contract.spec.ts
+│       │   ├── entities/
+│       │   │   ├── accomplishment-actual.entity.ts
+│       │   │   ├── accomplishment-version.entity.ts
+│       │   │   ├── accomplishment.entity.ts
+│       │   │   ├── assignment-response.entity.ts
+│       │   │   ├── assignment.entity.ts
+│       │   │   ├── cycle-participant.entity.ts
+│       │   │   ├── cycle-stage.entity.ts
+│       │   │   ├── cycle.entity.ts
+│       │   │   └── manager-assignment.entity.ts
+│       │   └── testing/
+│       │       └── memory-table-spec.ts
 │       │
 │       └── behavioral-assessment/
 │           ├── behavioral-assessment.module.ts
@@ -271,19 +332,25 @@ web/
 │   │       ├── not-found.tsx
 │   │       ├── 202-files/page.tsx
 │   │       ├── employees/page.tsx
-│   │       ├── goals/page.tsx
+│   │       ├── goals/
+│   │       │   ├── page.tsx                 # With goals-content.tsx and goals-description.tsx: the KPI reports
+│   │       │   └── [accomplishment-id]/     # page.tsx, record-content.tsx
 │   │       ├── my-team/page.tsx
 │   │       ├── pip/page.tsx
 │   │       ├── reports/page.tsx
-│   │       ├── review-cycles/page.tsx
+│   │       ├── review-cycles/
+│   │       │   ├── page.tsx                 # Register
+│   │       │   ├── new/page.tsx             # Create wizard
+│   │       │   └── [cycle-id]/              # page.tsx and details-content.tsx (Cycle Details), edit/page.tsx
 │   │       └── reviews/
 │   │           ├── page.tsx
+│   │           ├── [assignment-id]/         # page.tsx, review-content.tsx
 │   │           └── templates/
 │   │               ├── behavioral-assessment-template/page.tsx
 │   │               └── kpi-goal-template/
 │   │                   ├── page.tsx             # List
 │   │                   ├── new/page.tsx         # Builder
-│   │                   └── [templateId]/
+│   │                   └── [template-id]/
 │   │                       ├── page.tsx         # Details
 │   │                       └── edit/page.tsx    # Edit
 │   │
@@ -291,7 +358,7 @@ web/
 │   │   ├── ui/                              # shadcn primitives on Base UI
 │   │   ├── atoms/                           # Smallest display pieces: badges, score bar, progress cell
 │   │   ├── molecules/                       # Groups of atoms and ui primitives
-│   │   ├── organisms/                       # Data table, charts, error and not-found states, notification menu
+│   │   ├── organisms/                       # Data table, filtered table, charts, error and not-found states, notification menu
 │   │   └── templates/                       # Page skeletons: listing, detail, form, placeholder
 │   │
 │   ├── features/                            # One folder per feature
@@ -301,13 +368,16 @@ web/
 │   │   │   ├── hooks/                       # use-credentials-form.ts
 │   │   │   └── services/                    # auth-credentials.ts, current-user.ts, refresh-session.ts, session-cookie.ts, session-guard.ts, sign-out.ts, submit-credentials.ts
 │   │   ├── evaluations/
-│   │   │   ├── components/                  # evaluator-scoring-form.tsx
+│   │   │   ├── components/                  # evaluator-scoring-form.tsx, review-question-field.tsx, review-history.tsx, rating-field.tsx, review-completion.tsx
 │   │   │   └── services/                    # assessment-request.ts
 │   │   ├── position-goals/
-│   │   │   ├── components/                  # kpi-reporting-form.tsx, kpi-verification-panel.tsx
-│   │   │   └── services/                    # actuals-request.ts
+│   │   │   ├── api/                         # accomplishment-requests.ts (server only)
+│   │   │   ├── components/                  # accomplishment-record.tsx (one report) with its summary, values, history, indicator table, indicator criteria and card, reporting form, and verification panel; accomplishments-list.tsx, accomplishments-table.tsx, goals-notice.tsx
+│   │   │   └── services/                    # accomplishment-reader.ts, accomplishment-response.ts, actuals-request.ts, target-result.ts, kpi-template-label.ts
 │   │   ├── review-cycles/
-│   │   │   └── components/                  # Cycle setup stepper, its steps, and the cycles table
+│   │   │   ├── api/                         # review-cycle-requests.ts (server only)
+│   │   │   ├── components/                  # The create wizard (cycle-wizard, details, participants, templates, stages), review-cycles-table.tsx and review-cycles-content.tsx (the register), reviews-content.tsx, review-list.tsx, reviews-table.tsx, and review-list-notice.tsx (All Reviews), review-summary.tsx and review-template-card.tsx (one review), cycle-details.tsx with cycle-overview.tsx, cycle-participants-tab.tsx, cycle-progress-tab.tsx, extend-deadlines-dialog.tsx, anonymous-stages.tsx, cycle-results-tab.tsx, results-table.tsx, result-details.tsx, and review-assessment-header.tsx
+│   │   │   └── services/                    # review-cycle-reader.ts, cycle-draft.ts, cycle-changes.ts, cycle-components.ts, result-reader.ts, result-words.ts, cycle-progress.ts, status-filter.ts, launch-confirmation.ts, manage-review-cycle.ts, save-review-cycle.ts, review-list-params.ts, review-response.ts
 │   │   └── review-templates/
 │   │       ├── api/                         # goal-template-requests.ts (server only)
 │   │       ├── components/                  # kpi-goal-template-editor.tsx, indicator-matrix-editor.tsx, goal-template-* (list, listing, details, create, edit, notices), behavioral-template-editor.tsx (not routed)
@@ -317,12 +387,13 @@ web/
 │   ├── constants/                           # domain-labels.ts, goal-template-path.ts, review-tones.ts, workspace-config.ts, workspace-navigation.ts
 │   ├── context/                             # query-provider.tsx, theme-provider.tsx
 │   ├── stores/                              # workspace-store.ts (Zustand)
-│   ├── hooks/                               # use-mobile.ts, use-unsaved-changes-warning.ts
-│   ├── api/                                 # api-client.ts, api-url.ts (server side only)
+│   ├── hooks/                               # use-mobile.ts, use-problem-focus.ts, use-unsaved-changes-warning.ts
+│   ├── api/                                 # api-client.ts, api-url.ts, authorized-requests.ts (server side only)
+│   ├── services/                            # api-read.ts, api-send.ts: calls of two or more features (server side only)
 │   ├── lib/                                 # utils.ts (class name helper)
-│   ├── utils/                               # csv.ts
+│   ├── utils/                               # api-error-text.ts, csv.ts, form-problems.ts, workspace-date.ts
 │   ├── styles/                              # colors.css, typography.css, layout.css, media.css, motion.css, surfaces.css
-│   └── types/                               # chart.ts, employee.ts, kpi-indicator.ts, person.ts, review-question.ts, role.ts
+│   └── types/                               # chart.ts, form-action.ts, person.ts, role.ts
 │
 ├── public/
 │   ├── assets/                              # 404 image and the HRDotNet logos

@@ -23,8 +23,9 @@ export function UnsavedChangesDialog({
     <ConfirmationDialog
       open={open}
       title="Leave without saving?"
-      description="Your unsaved changes will be discarded."
-      confirmLabel="Leave"
+      description="Your unsaved changes will be discarded. Save your draft before leaving if you want to keep these changes."
+      confirmLabel="Discard changes"
+      cancelLabel="Keep editing"
       onClose={onStay}
       onConfirm={onLeave}
     />

@@ -27,6 +27,8 @@ const ACTOR_ID = "00000000-0000-0000-0000-000000000021";
 function indicator(overrides: Partial<IndicatorDto> = {}): IndicatorDto {
   return {
     name: "Sales",
+    unit: "Count",
+    target: 10,
     direction: "higher_is_better",
     weight: 100,
     scoreTargetMet: 5,
@@ -76,7 +78,7 @@ describe("KpiGoalsService writes", () => {
     work(manager as unknown as EntityManager),
   );
   // Reads outside a transaction go through `dataSource.manager`.
-  const readManager = { findOne: vi.fn(), query: vi.fn() };
+  const readManager = { findOne: vi.fn(), query: vi.fn(), find: vi.fn() };
   const resolver = { resolveCompany: vi.fn(), resolveAccount: vi.fn() };
   let service: KpiGoalsService;
 
@@ -95,6 +97,7 @@ describe("KpiGoalsService writes", () => {
     resolver.resolveCompany.mockReset().mockResolvedValue(COMPANY);
     resolver.resolveAccount.mockReset().mockResolvedValue({ company: COMPANY, actorId: ACTOR_ID });
     readManager.findOne.mockReset();
+    readManager.find.mockReset().mockResolvedValue([]);
     readManager.findOne.mockResolvedValue({ templateId: TEMPLATE_ID });
     repos.versions.findOne.mockResolvedValue(null);
     service = new KpiGoalsService(
@@ -147,7 +150,7 @@ describe("KpiGoalsService writes", () => {
     await service.create(createDto([indicator()]), "user-1");
 
     expect(transaction).toHaveBeenCalledTimes(1);
-    expect(manager.save).toHaveBeenCalledTimes(3);
+    expect(manager.save).toHaveBeenCalledTimes(4);
     expectNoRepositoryWrites();
   });
 
@@ -210,7 +213,7 @@ describe("KpiGoalsService writes", () => {
     });
 
     await expect(
-      service.update(TEMPLATE_ID, { name: "Renamed", position: "Software Engineer", indicators: [indicator()] }),
+      service.update(TEMPLATE_ID, { name: "Renamed", position: "Software Engineer", indicators: [indicator()] }, "user-1"),
     ).rejects.toThrow(ConflictException);
 
     expect(manager.save).not.toHaveBeenCalled();
@@ -224,7 +227,7 @@ describe("KpiGoalsService writes", () => {
       .mockResolvedValueOnce({ versionId: VERSION_ID });
     manager.find.mockResolvedValueOnce([{ indicatorId: "old" }] as never);
 
-    await service.update(TEMPLATE_ID, { name: "Renamed", description: "", position: "Software Engineer", indicators: [indicator()] });
+    await service.update(TEMPLATE_ID, { name: "Renamed", description: "", position: "Software Engineer", indicators: [indicator()] }, "user-1");
 
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(manager.delete).toHaveBeenCalled();
@@ -242,7 +245,7 @@ describe("KpiGoalsService writes", () => {
       name: "Renamed",
       description: "",
       indicators: [indicator()],
-    });
+    }, "user-1");
 
     expect(manager.save).toHaveBeenCalledWith(
       expect.objectContaining({ templateId: TEMPLATE_ID, name: "Renamed", description: null }),
@@ -254,7 +257,7 @@ describe("KpiGoalsService writes", () => {
     manager.findOne
       .mockResolvedValueOnce(template)
       .mockResolvedValueOnce({ versionId: VERSION_ID, frozenAt: null });
-    manager.find.mockResolvedValueOnce([{ indicatorId: "i-1", weight: "100.00" }] as never);
+    manager.find.mockResolvedValueOnce([{ indicatorId: "i-1", weight: "100.00", unit: "Count", target: "10" }] as never);
 
     await service.publish(TEMPLATE_ID, "4");
 
@@ -267,12 +270,13 @@ describe("KpiGoalsService writes", () => {
     manager.findOne
       .mockResolvedValueOnce({ templateId: TEMPLATE_ID, status: "draft" })
       .mockResolvedValueOnce({ versionId: VERSION_ID, frozenAt: null });
-    manager.find.mockResolvedValueOnce([{ indicatorId: "i-1", weight: "100.00" }] as never);
+    manager.find.mockResolvedValueOnce([{ indicatorId: "i-1", weight: "100.00", unit: "Count", target: "10" }] as never);
 
     await service.publish(TEMPLATE_ID, "user-1");
 
     expect(transaction).toHaveBeenCalledTimes(1);
-    expect(manager.save).toHaveBeenCalledTimes(2);
+    // The version, the template, and the audit row.
+    expect(manager.save).toHaveBeenCalledTimes(3);
     expectNoRepositoryWrites();
   });
 
@@ -305,7 +309,7 @@ describe("KpiGoalsService writes", () => {
       .mockResolvedValueOnce({ versionId: VERSION_ID });
     manager.query.mockResolvedValueOnce([]);
 
-    await service.update(TEMPLATE_ID, { name: "Renamed", position: "Retired Role", indicators: [indicator()] });
+    await service.update(TEMPLATE_ID, { name: "Renamed", position: "Retired Role", indicators: [indicator()] }, "user-1");
 
     expect(manager.query).not.toHaveBeenCalledWith(expect.stringContaining("pms.employees"), expect.anything());
     expect(manager.save).toHaveBeenCalled();
@@ -318,7 +322,7 @@ describe("KpiGoalsService writes", () => {
     manager.query.mockResolvedValueOnce([]);
 
     await expect(
-      service.update(TEMPLATE_ID, { name: "Renamed", position: "Unknown", indicators: [indicator()] }),
+      service.update(TEMPLATE_ID, { name: "Renamed", position: "Unknown", indicators: [indicator()] }, "user-1"),
     ).rejects.toThrow(BadRequestException);
 
     expect(manager.save).not.toHaveBeenCalled();
@@ -344,7 +348,7 @@ describe("KpiGoalsService writes", () => {
       },
     ]);
 
-    const [item] = await service.list();
+    const [item] = await service.list("user-1");
 
     expect(item).toMatchObject({
       templateId: TEMPLATE_ID,
@@ -497,7 +501,7 @@ describe("KpiGoalsService writes", () => {
     manager.findOne
       .mockResolvedValueOnce({ templateId: TEMPLATE_ID, status: "draft" })
       .mockResolvedValueOnce({ versionId: VERSION_ID, frozenAt: null });
-    manager.find.mockResolvedValueOnce([{ indicatorId: "i-1", weight: "60.00" }] as never);
+    manager.find.mockResolvedValueOnce([{ indicatorId: "i-1", weight: "60.00", unit: "Count", target: "10" }] as never);
 
     await expect(service.publish(TEMPLATE_ID, "4")).rejects.toThrow(/total 100/);
 
@@ -611,7 +615,7 @@ describe("KpiGoalsService writes", () => {
       await service.update(TEMPLATE_ID, {
         name: "Renamed",
         indicators: [indicator()],
-      });
+      }, "user-1");
 
       const cellDelete = manager.query.mock.calls.findIndex(([sql]) =>
         String(sql).includes("DELETE FROM pms.kpi_indicator_matrix_cells"),
@@ -629,7 +633,7 @@ describe("KpiGoalsService writes", () => {
       repos.matrixRows.find.mockResolvedValue([{ rowId: "r-1" }]);
       repos.cells.find.mockResolvedValue([{ rowId: "r-1", colId: "c-1", value: "x" }]);
 
-      const tree = await service.getById(TEMPLATE_ID);
+      const tree = await service.getById(TEMPLATE_ID, "user-1");
 
       expect(tree.matrixCells).toEqual([{ rowId: "r-1", colId: "c-1", value: "x" }]);
     });
@@ -638,13 +642,261 @@ describe("KpiGoalsService writes", () => {
   it("returns not found when a template read finds nothing", async () => {
     readManager.findOne.mockResolvedValue(null);
 
-    await expect(service.getById(TEMPLATE_ID)).rejects.toThrow(NotFoundException);
+    await expect(service.getById(TEMPLATE_ID, "user-1")).rejects.toThrow(NotFoundException);
   });
 
   it("refuses to archive a template that is already archived", async () => {
-    readManager.findOne.mockResolvedValue({ templateId: TEMPLATE_ID, status: "archived" });
+    manager.findOne.mockResolvedValue({ templateId: TEMPLATE_ID, status: "archived" });
 
-    await expect(service.archive(TEMPLATE_ID)).rejects.toThrow(ConflictException);
-    expect(repos.templates.save).not.toHaveBeenCalled();
+    await expect(service.archive(TEMPLATE_ID, "user-1")).rejects.toThrow(ConflictException);
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  describe("an older version (PRD 4.9)", () => {
+    it("answers 404 for a draft or unknown version", async () => {
+      repos.versions.findOne.mockResolvedValue({ versionId: VERSION_ID, version: 3, frozenAt: null });
+      await expect(service.getVersion(TEMPLATE_ID, 3, "user-1")).rejects.toThrow(NotFoundException);
+
+      repos.versions.findOne.mockResolvedValue(null);
+      await expect(service.getVersion(TEMPLATE_ID, 9, "user-1")).rejects.toThrow(NotFoundException);
+    });
+
+    it("answers the content of that version, after the company check", async () => {
+      const old = { versionId: VERSION_ID, version: 1, frozenAt: new Date() };
+      repos.versions.findOne.mockResolvedValue(old);
+
+      const tree = await service.getVersion(TEMPLATE_ID, 1, "user-1");
+
+      expect(readManager.findOne).toHaveBeenCalledWith(KpiGoalTemplate, { where: { templateId: TEMPLATE_ID, company: COMPANY } });
+      expect(repos.versions.findOne).toHaveBeenCalledWith({ where: { templateId: TEMPLATE_ID, version: 1 } });
+      expect(tree.version).toBe(old);
+      expect(repos.indicators.find).toHaveBeenCalledWith({ where: { versionId: VERSION_ID } });
+    });
+
+    const TODAY = { templateId: TEMPLATE_ID, name: "Today", description: "New", position: "Manager", status: "published", currentVersion: 3 };
+    const publication = (currentVersion: number) => ({
+      afterJson: { currentVersion, name: "Then", description: null, position: "Engineer", status: "published" },
+    });
+
+    it("shows the name, the description, and the position as that version was published", async () => {
+      readManager.findOne.mockResolvedValue({ ...TODAY });
+      readManager.find.mockResolvedValue([publication(2), publication(1)]);
+      repos.versions.findOne.mockResolvedValue({ versionId: VERSION_ID, version: 1, frozenAt: new Date() });
+
+      const { template } = await service.getVersion(TEMPLATE_ID, 1, "user-1");
+
+      expect(template).toMatchObject({ name: "Then", description: null, position: "Engineer", status: "published", currentVersion: 3 });
+      expect(readManager.find).toHaveBeenCalledWith(expect.anything(), {
+        where: expect.objectContaining({ entityType: "kpi_template", entityId: TEMPLATE_ID }),
+      });
+    });
+
+    it("keeps the details of today for a publication that has no audit row", async () => {
+      readManager.findOne.mockResolvedValue({ ...TODAY });
+      readManager.find.mockResolvedValue([publication(2)]);
+      repos.versions.findOne.mockResolvedValue({ versionId: VERSION_ID, version: 1, frozenAt: new Date() });
+
+      expect((await service.getVersion(TEMPLATE_ID, 1, "user-1")).template).toMatchObject({ name: "Today", position: "Manager" });
+    });
+
+    it.each([
+      ["the list", () => service.listVersions(TEMPLATE_ID, "user-1")],
+      ["one version", () => service.getVersion(TEMPLATE_ID, 1, "user-1")],
+    ])("answers 404 to %s of a template outside the company, and reads no version", async (_what, act) => {
+      readManager.findOne.mockResolvedValue(null);
+
+      await expect(act()).rejects.toThrow(NotFoundException);
+      expect(repos.versions.findOne).not.toHaveBeenCalled();
+      expect(repos.versions.find).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("audit rows (PRD 4.7)", () => {
+    const FACTS = { name: "Old", description: null, position: "Software Engineer", company: COMPANY };
+    const rows = () =>
+      manager.save.mock.calls.map((call) => call[0] as Record<string, unknown>).filter((value) => value.eventId);
+    const found = (status: string, version: Record<string, unknown> = { versionId: VERSION_ID, version: 2 }) => {
+      manager.findOne
+        .mockResolvedValueOnce({ templateId: TEMPLATE_ID, status, currentVersion: 2, ...FACTS })
+        .mockResolvedValueOnce(version);
+    };
+    const body = { name: "Renamed", description: "", position: "Software Engineer", indicators: [indicator()] };
+    const row = (action: string, before: object, after: object) =>
+      expect.objectContaining({
+        entityType: "kpi_template",
+        action,
+        actorId: ACTOR_ID,
+        beforeJson: expect.objectContaining(before),
+        afterJson: expect.objectContaining(after),
+      });
+
+    it("writes one row for a creation", async () => {
+      await service.create(createDto([indicator()]), "user-1");
+
+      expect(rows()).toEqual([
+        expect.objectContaining({
+          entityType: "kpi_template",
+          action: "created",
+          actorId: ACTOR_ID,
+          beforeJson: null,
+          afterJson: expect.objectContaining({ status: "draft", currentVersion: 1 }),
+        }),
+      ]);
+    });
+
+    it("writes one row for an update, with the values before and after", async () => {
+      found("draft");
+
+      await service.update(TEMPLATE_ID, body, "user-1");
+
+      expect(rows()).toEqual([row("updated", { name: "Old" }, { name: "Renamed" })]);
+    });
+
+    it("writes one row for a publication, with the version that was published", async () => {
+      found("draft", { versionId: VERSION_ID, version: 2, frozenAt: null });
+      manager.find.mockResolvedValueOnce([{ indicatorId: "i-1", weight: "100.00", unit: "Count", target: "10" }] as never);
+
+      await service.publish(TEMPLATE_ID, "user-1");
+
+      expect(rows()).toEqual([row("published", { status: "draft" }, { status: "published", currentVersion: 2 })]);
+    });
+
+    it("writes one row for a new version", async () => {
+      found("published");
+
+      await service.createVersion(TEMPLATE_ID, body, "user-1");
+
+      expect(rows()).toEqual([row("version_published", { currentVersion: 2 }, { currentVersion: 3 })]);
+    });
+
+    it("archives under a row lock, and writes the row in the same transaction", async () => {
+      found("published");
+
+      await service.archive(TEMPLATE_ID, "user-1");
+
+      expect(manager.findOne).toHaveBeenCalledWith(KpiGoalTemplate, expect.objectContaining({ lock: { mode: "pessimistic_write" } }));
+      expect(rows()).toEqual([row("archived", { status: "published" }, { status: "archived" })]);
+      expect(repos.templates.save).not.toHaveBeenCalled();
+    });
+
+    it("fails the change when the row cannot be written", async () => {
+      found("published");
+      manager.save.mockImplementation(async (value: unknown) => {
+        if ((value as { eventId?: string }).eventId) throw new Error("audit failed");
+        return value;
+      });
+
+      await expect(service.archive(TEMPLATE_ID, "user-1")).rejects.toThrow("audit failed");
+    });
+  });
+
+  describe("ids from the request (CWE-639, Tpl-G-006)", () => {
+    const FOREIGN = "3f2504e0-4f89-41d3-9a0c-0305e82c33aa";
+    const OWN_DRAFT = "3f2504e0-4f89-41d3-9a0c-0305e82c33bb";
+    const savedIds = () =>
+      manager.create.mock.calls.filter(([type]) => type === KpiIndicator).map(([, value]) => (value as { indicatorId: string }).indicatorId);
+
+    it("gives a new template its own indicator ids: an id of the request could move a row of another version", async () => {
+      await service.create(createDto([indicator({ indicatorId: FOREIGN })]), "user-1");
+
+      expect(savedIds()).toHaveLength(1);
+      expect(savedIds()[0]).not.toBe(FOREIGN);
+    });
+
+    it("keeps the id of an indicator of the draft that it replaces, once, and no other id", async () => {
+      manager.findOne
+        .mockResolvedValueOnce({ templateId: TEMPLATE_ID, status: "draft" })
+        .mockResolvedValueOnce({ versionId: VERSION_ID });
+      manager.find.mockImplementation(async () => [{ indicatorId: OWN_DRAFT }] as never);
+
+      await service.update(
+        TEMPLATE_ID,
+        { name: "Renamed", indicators: [OWN_DRAFT, OWN_DRAFT, FOREIGN].map((indicatorId) => indicator({ indicatorId })) },
+        "user-1",
+      );
+
+      const [kept, second, foreign] = savedIds();
+      expect(kept).toBe(OWN_DRAFT);
+      expect(second).not.toBe(OWN_DRAFT);
+      expect(foreign).not.toBe(FOREIGN);
+    });
+  });
+
+  describe("two writers at once (PRD 4.11)", () => {
+    it.each([
+      ["an update", () => service.update(TEMPLATE_ID, { name: "N", indicators: [indicator()] }, "user-1")],
+      ["a publication", () => service.publish(TEMPLATE_ID, "user-1")],
+    ])("locks the template row for %s, so the checked content is the stored content", async (_what, act) => {
+      manager.findOne.mockResolvedValue(null);
+
+      await expect(act()).rejects.toThrow(NotFoundException);
+
+      expect(manager.findOne).toHaveBeenCalledWith(KpiGoalTemplate, expect.objectContaining({ lock: { mode: "pessimistic_write" } }));
+    });
+  });
+
+  describe("a version that HR publishes (Tpl-G-002)", () => {
+    it.each([
+      ["no unit", { unit: null, target: "5" }],
+      ["a blank unit", { unit: "  ", target: "5" }],
+      ["no target", { unit: "Count", target: null }],
+    ])("refuses a draft indicator with %s, and keeps the draft", async (_what, missing) => {
+      manager.findOne
+        .mockResolvedValueOnce({ templateId: TEMPLATE_ID, status: "draft" })
+        .mockResolvedValueOnce({ versionId: VERSION_ID, frozenAt: null });
+      manager.find.mockResolvedValueOnce([{ indicatorId: "i-1", weight: "100.00", ...missing }] as never);
+
+      await expect(service.publish(TEMPLATE_ID, "user-1")).rejects.toThrow("Set a unit and a target for every indicator before you publish.");
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it("accepts a target of zero", async () => {
+      manager.findOne
+        .mockResolvedValueOnce({ templateId: TEMPLATE_ID, status: "draft" })
+        .mockResolvedValueOnce({ versionId: VERSION_ID, frozenAt: null });
+      manager.find.mockResolvedValueOnce([{ indicatorId: "i-1", weight: "100.00", unit: "Count", target: 0 }] as never);
+
+      await service.publish(TEMPLATE_ID, "user-1");
+
+      expect(manager.save).toHaveBeenCalled();
+    });
+  });
+
+  describe("company scope (CWE-639)", () => {
+    const OWN = { where: { templateId: TEMPLATE_ID, company: COMPANY } };
+    const body = { name: "N", description: "", position: "Software Engineer", indicators: [indicator()] };
+
+    it("lists the templates of the company of the account only, with the company as a parameter", async () => {
+      readManager.query.mockResolvedValue([]);
+
+      await service.list("user-1");
+
+      expect(readManager.query).toHaveBeenCalledWith(expect.stringContaining("WHERE t.company = $1"), [COMPANY]);
+    });
+
+    it.each([
+      ["a read", () => service.getById(TEMPLATE_ID, "user-1")],
+    ])("answers 404 to %s of a template outside the company, and writes nothing", async (_what, act) => {
+      readManager.findOne.mockResolvedValue(null);
+
+      await expect(act()).rejects.toThrow(NotFoundException);
+
+      expect(readManager.findOne).toHaveBeenCalledWith(KpiGoalTemplate, OWN);
+      expect(repos.templates.save).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["an update", () => service.update(TEMPLATE_ID, body, "user-1")],
+      ["an archive", () => service.archive(TEMPLATE_ID, "user-1")],
+      ["a publication", () => service.publish(TEMPLATE_ID, "user-1")],
+      ["a new version", () => service.createVersion(TEMPLATE_ID, body, "user-1")],
+    ])("finds the template inside the company for %s, and writes nothing otherwise", async (_what, act) => {
+      manager.findOne.mockResolvedValue(null);
+
+      await expect(act()).rejects.toThrow(NotFoundException);
+
+      expect(manager.findOne).toHaveBeenCalledWith(KpiGoalTemplate, expect.objectContaining(OWN));
+      expect(manager.save).not.toHaveBeenCalled();
+    });
   });
 });

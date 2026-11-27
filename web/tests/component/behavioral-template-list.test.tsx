@@ -17,9 +17,19 @@ const ROW = {
   archivedAt: null,
   createdAt: "2026-11-01T00:00:00.000Z",
   updatedAt: "2026-11-05T00:00:00.000Z",
+  questionCount: 6,
 };
 
 describe("BehavioralTemplateList", () => {
+  it("keeps six readable columns on a phone: headings wrap, and the table scrolls before a column gets too narrow", () => {
+    render(<BehavioralTemplateList templates={[ROW]} />);
+
+    const layout = screen.getByRole("table").closest("[class*='table-fixed']")?.className;
+    expect(layout).toContain("[&_table]:min-w-2xl");
+    expect(layout).toContain("[&_th]:whitespace-normal");
+  });
+
+
   it("links each template to its details, named by its name, with its version, category, review type, and status as words", () => {
     render(<BehavioralTemplateList templates={[ROW]} />);
 
@@ -27,8 +37,7 @@ describe("BehavioralTemplateList", () => {
     expect(row.getByRole("link", { name: /Quarterly Performance Review/ }).getAttribute("href")).toBe(
       `${PATH}/${ROW.templateId}`,
     );
-    expect(row.getByText("Version 2")).toBeTruthy();
-    expect(row.getByText("General Performance")).toBeTruthy();
+    expect(row.getByText("Version 2 · General Performance")).toBeTruthy();
     expect(row.getByText("Self")).toBeTruthy();
     expect(row.getByText("Published")).toBeTruthy();
   });
@@ -49,7 +58,9 @@ describe("BehavioralTemplateList", () => {
   it("shows Others for a template with the Others category and review type", () => {
     render(<BehavioralTemplateList templates={[{ ...ROW, category: "others", reviewType: "others" }]} />);
 
-    expect(within(screen.getAllByRole("row")[1]!).getAllByText("Others")).toHaveLength(2);
+    const row = within(screen.getAllByRole("row")[1]!);
+    expect(row.getByText("Version 2 · Others")).toBeTruthy();
+    expect(row.getByText("Others")).toBeTruthy();
   });
 
   it("says there are no templates, and how to start, when the list is empty", () => {

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type { Mock } from 'vitest';
 import { BehavioralAssessmentService } from './behavioral-assessment.service.js';
+import { BehavioralAssessmentController } from '../controllers/behavioral-assessment.controller.js';
 import { BehavioralTemplate } from '../entities/behavioral-template.entity.js';
 import { BehavioralTemplateVersion } from '../entities/behavioral-template-version.entity.js';
 import { BehavioralSection } from '../entities/behavioral-section.entity.js';
@@ -55,6 +56,7 @@ describe('BehavioralAssessmentService', () => {
   };
   const dataSource = {
     transaction: vi.fn(async (run: (m: typeof manager) => Promise<unknown>) => run(manager)),
+    manager: { find: vi.fn(async (): Promise<unknown[]> => []) },
   };
 
   async function build() {
@@ -317,7 +319,7 @@ describe('BehavioralAssessmentService', () => {
       } as BehavioralTemplate);
 
       await expect(
-        service.update('t-1', { sections: [] } as unknown as never),
+        service.update('t-1', { sections: [] } as unknown as never, 'user-1'),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -335,7 +337,7 @@ describe('BehavioralAssessmentService', () => {
         ],
       } as unknown as never;
 
-      await expect(service.update('t-1', dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update('t-1', dto, 'user-1')).rejects.toThrow(BadRequestException);
 
       expect(sections.delete).not.toHaveBeenCalled();
       expect(questions.delete).not.toHaveBeenCalled();
@@ -347,7 +349,7 @@ describe('BehavioralAssessmentService', () => {
       templates.findOne.mockResolvedValue({ templateId: 't-1', status: 'draft' } as BehavioralTemplate);
       versions.findOne.mockResolvedValue({ versionId: 'v-1', frozenAt: null } as BehavioralTemplateVersion);
 
-      await service.update('t-1', { sections: [] } as unknown as never);
+      await service.update('t-1', { sections: [] } as unknown as never, 'user-1');
 
       expect(dataSource.transaction).toHaveBeenCalledTimes(1);
       expect(templates.findOne).toHaveBeenCalledWith(
@@ -374,7 +376,7 @@ describe('BehavioralAssessmentService', () => {
         name: ' New name ',
         category: 'peer_feedback',
         sections: [],
-      } as unknown as never);
+      } as unknown as never, 'user-1');
 
       expect(templates.save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -384,6 +386,186 @@ describe('BehavioralAssessmentService', () => {
           reviewType: 'self',
         }),
       );
+    });
+  });
+
+  describe('audit rows (PRD 5.7)', () => {
+    const rows = () =>
+      manager.save.mock.calls.map((call) => call[0] as Record<string, unknown>).filter((value) => value.eventId);
+    const stored = (status: string) =>
+      templates.findOne.mockResolvedValue({
+        templateId: 't-1',
+        company: 'Example Company',
+        name: 'Old',
+        description: null,
+        category: 'general_performance',
+        reviewType: 'self',
+        status,
+        currentVersion: 1,
+      } as BehavioralTemplate);
+    const draftVersion = () => versions.findOne.mockResolvedValue({ versionId: 'v-1', frozenAt: null } as BehavioralTemplateVersion);
+    const row = (action: string, before: object, after: object) =>
+      expect.objectContaining({
+        entityType: 'behavioral_template',
+        entityId: 't-1',
+        action,
+        actorId: ACTOR_ID,
+        beforeJson: expect.objectContaining(before),
+        afterJson: expect.objectContaining(after),
+      });
+
+    it('writes one row for a creation', async () => {
+      stored('draft');
+
+      await service.create({ name: 'New', category: 'general_performance', reviewType: 'self', sections: [] } as never, 'user-1');
+
+      expect(rows()).toEqual([
+        expect.objectContaining({ entityType: 'behavioral_template', action: 'created', actorId: ACTOR_ID, beforeJson: null }),
+      ]);
+    });
+
+    it('writes one row for an update, with the values before and after', async () => {
+      stored('draft');
+      draftVersion();
+
+      await service.update('t-1', { name: 'Renamed', sections: [] } as never, 'user-1');
+
+      expect(rows()).toEqual([row('updated', { name: 'Old' }, { name: 'Renamed' })]);
+    });
+
+    it('writes one row for a publication', async () => {
+      stored('draft');
+      draftVersion();
+      sections.find.mockResolvedValue([{ sectionId: 's-1' } as BehavioralSection]);
+      questions.find.mockResolvedValue([{ questionId: 'q-1', sectionId: 's-1' } as BehavioralQuestion]);
+
+      await service.publish('t-1', 'user-1');
+
+      expect(rows()).toEqual([row('published', { status: 'draft' }, { status: 'published', currentVersion: 1 })]);
+    });
+
+    it('writes one row for a new version', async () => {
+      stored('published');
+      manager.findOne.mockResolvedValue(await templates.findOne());
+
+      await service.createVersion(
+        't-1',
+        { sections: [{ title: 'A', questions: [{ prompt: 'Q', questionType: 'paragraph' }] }] } as never,
+        'user-1',
+      );
+
+      expect(rows()).toEqual([row('version_published', { currentVersion: 1 }, { currentVersion: 2 })]);
+    });
+  });
+
+  describe('an older version (PRD 5.9)', () => {
+    it('answers 404 for a draft version', async () => {
+      templates.findOne.mockResolvedValue({ templateId: 't-1' } as BehavioralTemplate);
+      versions.findOne.mockResolvedValue({ versionId: 'v-2', frozenAt: null } as BehavioralTemplateVersion);
+
+      await expect(service.getVersion('t-1', 2, 'user-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('answers the sections of that version, after the company check', async () => {
+      templates.findOne.mockResolvedValue({ templateId: 't-1' } as BehavioralTemplate);
+      versions.findOne.mockResolvedValue({ versionId: 'v-1', version: 1, frozenAt: new Date() } as BehavioralTemplateVersion);
+
+      await service.getVersion('t-1', 1, 'user-1');
+
+      expect(templates.findOne).toHaveBeenCalledWith({ where: { templateId: 't-1', company: 'Example Company' } });
+      expect(versions.findOne).toHaveBeenCalledWith({ where: { templateId: 't-1', version: 1 } });
+      expect(sections.find).toHaveBeenCalledWith({ where: { versionId: 'v-1' }, order: { sortOrder: 'ASC' } });
+    });
+
+    it('shows the name, category, and review type as that version was published', async () => {
+      templates.findOne.mockResolvedValue({ templateId: 't-1', name: 'Today', category: 'leadership', reviewType: 'hr', currentVersion: 2 } as never);
+      versions.findOne.mockResolvedValue({ versionId: 'v-1', version: 1, frozenAt: new Date() } as BehavioralTemplateVersion);
+      dataSource.manager.find.mockResolvedValueOnce([
+        { afterJson: { currentVersion: 1, name: 'Then', description: 'Old', category: 'general_performance', reviewType: 'self' } },
+      ]);
+
+      const { template } = await service.getVersion('t-1', 1, 'user-1');
+
+      expect(template).toMatchObject({ name: 'Then', description: 'Old', category: 'general_performance', reviewType: 'self', currentVersion: 2 });
+    });
+
+    it('answers 404 to the list of a template outside the company', async () => {
+      templates.findOne.mockResolvedValue(null);
+
+      await expect(service.listVersions('t-1', 'user-1')).rejects.toThrow(NotFoundException);
+      expect(versions.find).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('archive (Tpl-B-001)', () => {
+    const stored = (status: string) =>
+      templates.findOne.mockResolvedValue({ templateId: 't-1', status, currentVersion: 1 } as BehavioralTemplate);
+
+    it.each(['draft', 'published'])('archives a %s template under a row lock, with its audit row', async (status) => {
+      stored(status);
+
+      await service.archive('t-1', 'user-1');
+
+      expect(templates.findOne).toHaveBeenCalledWith({
+        where: { templateId: 't-1', company: 'Example Company' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(templates.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'archived', archivedAt: expect.any(Date) }));
+      expect(manager.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'archived', beforeJson: expect.objectContaining({ status }) }),
+      );
+    });
+
+    it('refuses a template that is already archived, and writes nothing', async () => {
+      stored('archived');
+
+      await expect(service.archive('t-1', 'user-1')).rejects.toThrow(ConflictException);
+      expect(templates.save).not.toHaveBeenCalled();
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('answers 404 for a template outside the company', async () => {
+      templates.findOne.mockResolvedValue(null);
+
+      await expect(service.archive('t-1', 'user-1')).rejects.toThrow(NotFoundException);
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('is served at POST :id/archived', () => {
+      expect(Reflect.getMetadata('path', BehavioralAssessmentController.prototype.archive)).toBe(':id/archived');
+    });
+  });
+
+  describe('ids from the request (CWE-639, Tpl-G-006)', () => {
+    const body = {
+      name: 'Quarterly',
+      category: 'general_performance',
+      reviewType: 'self',
+      sections: [{ sectionId: 'foreign-section', title: 'S', questions: [{ questionId: 'foreign-question', prompt: 'P', questionType: 'short_answer' }] }],
+    } as unknown as CreateBehavioralTemplateDto;
+    const used = () => [
+      (sections.create.mock.calls[0]?.[0] as { sectionId: string } | undefined)?.sectionId,
+      (questions.create.mock.calls[0]?.[0] as { questionId: string } | undefined)?.questionId,
+    ];
+
+    it('gives a new template its own section and question ids: an id of the request could move a row of another version', async () => {
+      templates.findOne.mockResolvedValue({ templateId: 't-1', company: 'Example Company', status: 'draft' } as BehavioralTemplate);
+
+      await service.create(body, 'user-1');
+
+      expect(used()).not.toContain('foreign-section');
+      expect(used()).not.toContain('foreign-question');
+    });
+
+    it('does the same when a draft is replaced', async () => {
+      manager.findOne.mockResolvedValue({ templateId: 't-1', company: 'Example Company', status: 'draft' } as BehavioralTemplate);
+      templates.findOne.mockResolvedValue({ templateId: 't-1', company: 'Example Company', status: 'draft' } as BehavioralTemplate);
+      versions.findOne.mockResolvedValue({ versionId: 'v-1', frozenAt: null } as unknown as BehavioralTemplateVersion);
+
+      await service.update('t-1', body, 'user-1');
+
+      expect(used()).not.toContain('foreign-section');
+      expect(used()).not.toContain('foreign-question');
     });
   });
 
@@ -587,7 +769,7 @@ describe('BehavioralAssessmentService', () => {
     it('throws NotFoundException for missing templates', async () => {
       templates.findOne.mockResolvedValue(null);
 
-      await expect(service.getById('missing')).rejects.toThrow(
+      await expect(service.getById('missing', 'user-1')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -597,9 +779,71 @@ describe('BehavioralAssessmentService', () => {
     it('returns templates ordered by updatedAt descending', async () => {
       templates.find.mockResolvedValue([]);
 
-      const result = await service.list();
+      const result = await service.list('user-1');
       expect(templates.find).toHaveBeenCalled();
       expect(result).toEqual([]);
+      expect(versions.find).not.toHaveBeenCalled();
+    });
+
+    it('counts the questions of the current version of each template, with one query for each table', async () => {
+      templates.find.mockResolvedValue([
+        { templateId: 't-1', currentVersion: 2 },
+        { templateId: 't-2', currentVersion: 1 },
+      ] as BehavioralTemplate[]);
+      versions.find.mockResolvedValue([
+        { versionId: 'v-old', templateId: 't-1', version: 1 },
+        { versionId: 'v-now', templateId: 't-1', version: 2 },
+        { versionId: 'v-empty', templateId: 't-2', version: 1 },
+      ] as BehavioralTemplateVersion[]);
+      sections.find.mockResolvedValue([
+        { sectionId: 's-1', versionId: 'v-now' },
+        { sectionId: 's-2', versionId: 'v-now' },
+      ] as BehavioralSection[]);
+      questions.find.mockResolvedValue([{ sectionId: 's-1' }, { sectionId: 's-2' }, { sectionId: 's-2' }] as BehavioralQuestion[]);
+
+      const result = await service.list('user-1');
+
+      expect(result.map((row) => [row.templateId, row.questionCount])).toEqual([['t-1', 3], ['t-2', 0]]);
+      // The old version is not counted, so its sections are not read.
+      const sectionQuery = sections.find.mock.calls[0]?.[0] as { where: { versionId: { value: string[] } } };
+      expect(sectionQuery.where.versionId.value.sort()).toEqual(['v-empty', 'v-now']);
+      for (const repo of [versions, sections, questions]) expect(repo.find).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('company scope (CWE-639)', () => {
+    const OWN = { where: { templateId: 't-1', company: 'Example Company' } };
+    const dto = { sections: [{ title: 'S', questions: [{ prompt: 'P', questionType: 'short_answer' as const }] }] } as unknown as CreateBehavioralTemplateDto;
+
+    it('lists the templates of the company of the account only', async () => {
+      await service.list('user-1');
+
+      expect(templates.find).toHaveBeenCalledWith(expect.objectContaining({ where: { company: 'Example Company' } }));
+    });
+
+    it('reads one template by its id and the company, and answers 404 otherwise', async () => {
+      await expect(service.getById('t-1', 'user-1')).rejects.toThrow(NotFoundException);
+
+      expect(templates.findOne).toHaveBeenCalledWith(OWN);
+    });
+
+    it.each([
+      ['an update', () => service.update('t-1', dto, 'user-1')],
+      ['a publication', () => service.publish('t-1', 'user-1')],
+    ])('locks the template of the company only for %s, and writes nothing otherwise', async (_what, act) => {
+      await expect(act()).rejects.toThrow(NotFoundException);
+
+      expect(templates.findOne).toHaveBeenCalledWith(expect.objectContaining(OWN));
+      expect(templates.save).not.toHaveBeenCalled();
+    });
+
+    it('gives a new version to a template of the company only', async () => {
+      manager.findOne.mockResolvedValue(null);
+
+      await expect(service.createVersion('t-1', dto, 'user-1')).rejects.toThrow(NotFoundException);
+
+      expect(manager.findOne).toHaveBeenCalledWith(BehavioralTemplate, expect.objectContaining(OWN));
+      expect(manager.save).not.toHaveBeenCalled();
     });
   });
 });

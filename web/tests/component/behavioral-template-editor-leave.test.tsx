@@ -37,7 +37,7 @@ describe("BehavioralTemplateEditor, leaving the page", () => {
     expect(await screen.findByText("Leave without saving?")).toBeTruthy();
     expect(push).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Leave" }));
+    await user.click(screen.getByRole("button", { name: "Discard changes" }));
 
     expect(push).toHaveBeenCalledWith(BACK);
   });
@@ -48,7 +48,7 @@ describe("BehavioralTemplateEditor, leaving the page", () => {
     await user.type(screen.getByLabelText(/template name/i), "Quarterly");
     await user.click(screen.getByRole("link", { name: BACK_LINK }));
 
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await user.click(await screen.findByRole("button", { name: "Keep editing" }));
 
     expect(push).not.toHaveBeenCalled();
     expect((screen.getByLabelText(/template name/i) as HTMLInputElement).value).toBe("Quarterly");

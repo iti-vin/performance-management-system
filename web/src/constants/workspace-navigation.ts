@@ -82,12 +82,12 @@ const REVIEW_SETUP: WorkspaceNavigationItem = {
       icon: "templates",
       children: [
         {
-          label: "KPI Goal Template",
+          label: "KPI Goal Templates",
           icon: "goals",
           href: "/reviews/templates/kpi-goal-template",
         },
         {
-          label: "Behavioral Assessment Template",
+          label: "Behavioral Assessment Templates",
           icon: "reviews",
           href: "/reviews/templates/behavioral-assessment-template",
         },

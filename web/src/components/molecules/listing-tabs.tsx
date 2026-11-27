@@ -37,7 +37,8 @@ export function ListingTabs<Value extends string>({
           <TabsTrigger
             key={tab.value}
             value={tab.value}
-            className="min-h-pms-touch flex-none px-3 text-pms-label group-data-horizontal/tabs:after:-bottom-px"
+            // The base trigger takes the height of the list. A wrapped list is two rows tall, so each tab takes its own.
+            className="h-auto min-h-pms-touch flex-none px-3 text-pms-label group-data-horizontal/tabs:after:-bottom-px"
           >
             {tab.label}
             {tab.count !== undefined && (

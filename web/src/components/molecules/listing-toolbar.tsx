@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface ListingToolbarProps {
   searchLabel: string;
   searchValue: string;
+  searchPlaceholder?: string;
   onSearchChange: (value: string) => void;
   filters?: ReactNode;
   onClear?: () => void;
@@ -16,6 +17,7 @@ interface ListingToolbarProps {
 export function ListingToolbar({
   searchLabel,
   searchValue,
+  searchPlaceholder,
   onSearchChange,
   filters,
   onClear,
@@ -25,6 +27,7 @@ export function ListingToolbar({
       <SearchField
         label={searchLabel}
         value={searchValue}
+        placeholder={searchPlaceholder}
         onChange={(event) => onSearchChange(event.currentTarget.value)}
       />
       {filters}
@@ -35,7 +38,7 @@ export function ListingToolbar({
           className="min-h-pms-touch rounded-pms-control text-pms-label"
           onClick={onClear}
         >
-          Clear filters
+          Clear
         </Button>
       )}
     </div>

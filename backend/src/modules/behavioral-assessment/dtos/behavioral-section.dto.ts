@@ -22,7 +22,7 @@ export class ChoiceOptionDto {
 }
 
 export class QuestionDto {
-  @ApiProperty({ description: 'Optional. Generated on create when missing.' })
+  @ApiProperty({ description: 'Accepted and ignored: the server gives every saved question a new id.' })
   @IsOptional()
   @IsString()
   questionId?: string;
@@ -31,6 +31,7 @@ export class QuestionDto {
   @IsString()
   @MinLength(1)
   @MaxLength(2000)
+  @Matches(/\S/, { message: 'prompt must not be blank' })
   prompt: string;
 
   @ApiProperty({ enum: BEHAVIORAL_QUESTION_TYPES })
@@ -71,7 +72,7 @@ export class QuestionDto {
 }
 
 export class SectionDto {
-  @ApiProperty({ description: 'Optional. Generated on create when missing.' })
+  @ApiProperty({ description: 'Accepted and ignored: the server gives every saved section a new id.' })
   @IsOptional()
   @IsString()
   sectionId?: string;
@@ -80,6 +81,7 @@ export class SectionDto {
   @IsString()
   @MinLength(1)
   @MaxLength(300)
+  @Matches(/\S/, { message: 'title must not be blank' })
   title: string;
 
   @ApiProperty({ default: 0 })

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS pms.accomplishment_actuals (
     accomplishment_id  uuid NOT NULL REFERENCES pms.accomplishments(accomplishment_id),
     indicator_id       uuid NOT NULL REFERENCES pms.kpi_indicators(indicator_id),
     actual_value       numeric CHECK (actual_value >= 0),   -- nullable for draft
+    remarks            text,               -- the note of the employee on this indicator
     created_at         timestamptz NOT NULL DEFAULT now(),
     updated_at         timestamptz NOT NULL DEFAULT now(),
     -- One current actual per frozen indicator. Corrections retain history in the versions table.

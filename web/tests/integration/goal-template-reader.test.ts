@@ -119,7 +119,7 @@ describe("getGoalTemplate", () => {
 
     const result = await getGoalTemplate(TEMPLATE_ID);
 
-    expect(fetchGoalTemplate).toHaveBeenCalledWith("token", TEMPLATE_ID);
+    expect(fetchGoalTemplate).toHaveBeenCalledWith("token", TEMPLATE_ID, undefined);
     expect(result).toMatchObject({
       kind: "ok",
       data: { template: { position: "Software Engineer" } },

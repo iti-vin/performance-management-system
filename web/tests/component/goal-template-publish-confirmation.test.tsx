@@ -5,12 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GoalTemplateDetailsView } from "@/features/review-templates/components/goal-template-details-view";
 import { GoalTemplateEditForm } from "@/features/review-templates/components/goal-template-edit-form";
 import {
+  archiveGoalTemplate,
   publishGoalTemplate,
   saveGoalTemplateEdits,
 } from "@/features/review-templates/services/manage-goal-template";
 
 vi.mock("@/features/review-templates/services/manage-goal-template", () => ({
   publishGoalTemplate: vi.fn(),
+  archiveGoalTemplate: vi.fn(),
   saveGoalTemplateEdits: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -19,7 +21,7 @@ const ID = (suffix: string) => `3f2504e0-4f89-41d3-9a0c-0305e82c33${suffix}`;
 const POSITIONS = [{ value: "Software Engineer", label: "Software Engineer" }];
 const DIALOG_TEXT = "A published template is frozen. To change it later, you publish a new version.";
 
-function detail(status: "draft" | "published" = "draft"): GoalTemplateDetailResponseDto {
+function detail(status: "draft" | "published" | "archived" = "draft"): GoalTemplateDetailResponseDto {
   return {
     template: {
       templateId: ID("01"),
@@ -64,6 +66,7 @@ function detail(status: "draft" | "published" = "draft"): GoalTemplateDetailResp
 beforeEach(() => {
   vi.mocked(saveGoalTemplateEdits).mockReset().mockResolvedValue({ message: "" });
   vi.mocked(publishGoalTemplate).mockReset().mockResolvedValue({ message: "" });
+  vi.mocked(archiveGoalTemplate).mockReset().mockResolvedValue({ message: "" });
 });
 
 describe("KPI edit form, Publish Template", () => {
@@ -141,5 +144,26 @@ describe("KPI details view, Publish Template", () => {
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
 
     expect(publishGoalTemplate).not.toHaveBeenCalled();
+  });
+});
+
+describe("KPI details, Archive", () => {
+  it.each(["draft", "published"] as const)("asks first, and archives a %s template once the user confirms", async (status) => {
+    const user = userEvent.setup();
+    render(<GoalTemplateDetailsView detail={detail(status)} positions={POSITIONS} />);
+
+    await user.click(screen.getByRole("button", { name: "Archive" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Archive this template?" });
+    expect(archiveGoalTemplate).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Archive Template" }));
+
+    expect(archiveGoalTemplate).toHaveBeenCalledWith(ID("01"));
+  });
+
+  it("offers no Archive for an archived template", () => {
+    const status = "archived" as const;
+    render(<GoalTemplateDetailsView detail={detail(status)} positions={POSITIONS} />);
+
+    expect(screen.queryByRole("button", { name: "Archive" })).toBeNull();
   });
 });

@@ -33,12 +33,14 @@ VALUES
    now())
 ON CONFLICT (participant_id) DO NOTHING;
 
-INSERT INTO pms.cycle_stages (stage_id, cycle_id, perspective, evaluator_role, sort_order, deadline)
+-- The self and manager stages have no named person: launch derives the participant and the applied manager.
+INSERT INTO pms.cycle_stages (stage_id, cycle_id, perspective, evaluator_role, evaluator_id, sort_order, deadline)
 VALUES
   ('00000000-0000-0000-0000-000000000161',
-   '00000000-0000-0000-0000-000000000141', 'self', 'employee', 1, now() + interval '7 days'),
+   '00000000-0000-0000-0000-000000000141', 'self', 'employee', NULL, 1, now() + interval '7 days'),
   ('00000000-0000-0000-0000-000000000162',
-   '00000000-0000-0000-0000-000000000141', 'manager', 'engineering_manager', 2, now() + interval '10 days'),
+   '00000000-0000-0000-0000-000000000141', 'manager', 'engineering_manager', NULL, 2, now() + interval '10 days'),
   ('00000000-0000-0000-0000-000000000163',
-   '00000000-0000-0000-0000-000000000141', 'hr', 'hr_officer', 3, now() + interval '14 days')
+   '00000000-0000-0000-0000-000000000141', 'hr', 'hr_officer',
+   '00000000-0000-0000-0000-000000000023', 3, now() + interval '14 days')
 ON CONFLICT (stage_id) DO NOTHING;

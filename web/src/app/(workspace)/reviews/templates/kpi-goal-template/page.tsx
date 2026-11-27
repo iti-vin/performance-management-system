@@ -66,7 +66,7 @@ export default function KpiGoalTemplatePage({
   return (
     <ListingPageTemplate
       title={title}
-      description="Position-based KPI indicators, targets, and weights."
+      description="Define measurable, role-specific performance indicators."
       actions={
         <Suspense fallback={null}>
           <GoalTemplateCreateAction />

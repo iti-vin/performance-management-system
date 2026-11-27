@@ -9,6 +9,7 @@ export const cycleStagesRowSchema = z.object({
   cycleId: idSchema,
   perspective: evaluatorTypeSchema,
   evaluatorRole: z.string().nullable(),
+  evaluatorId: idSchema.nullable(),
   sortOrder: z.number().int(),
   deadline: timestampSchema.nullable(),
 });

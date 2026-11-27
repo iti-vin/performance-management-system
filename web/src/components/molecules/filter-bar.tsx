@@ -20,14 +20,16 @@ export interface FilterConfig {
 interface FilterBarProps {
   searchLabel: string;
   searchValue: string;
+  searchPlaceholder?: string;
   onSearchChange: (value: string) => void;
   filters: readonly FilterConfig[];
 }
 
-/** Search plus select filters. Shows "Clear filters" only while one is active. */
+/** Search plus select filters. Shows "Clear" only while one is active. */
 export function FilterBar({
   searchLabel,
   searchValue,
+  searchPlaceholder,
   onSearchChange,
   filters,
 }: FilterBarProps) {
@@ -39,6 +41,7 @@ export function FilterBar({
     <ListingToolbar
       searchLabel={searchLabel}
       searchValue={searchValue}
+      searchPlaceholder={searchPlaceholder}
       onSearchChange={onSearchChange}
       filters={filters.map((filter) => (
         <div key={filter.id} className="w-full min-w-0 sm:w-48">

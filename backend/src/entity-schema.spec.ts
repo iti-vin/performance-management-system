@@ -14,7 +14,8 @@ function listEntityFiles(dir: string): string[] {
 }
 
 describe("entity schemas", () => {
-  it("maps every entity table to the pms schema, never to public", async () => {
+  // It imports every entity file, which takes several seconds while other suites run.
+  it("maps every entity table to the pms schema, never to public", { timeout: 30_000 }, async () => {
     const files = listEntityFiles(MODULES_DIR);
     expect(files.length).toBeGreaterThan(0);
 

@@ -43,7 +43,7 @@ export default function BehavioralAssessmentTemplatePage({
   return (
     <ListingPageTemplate
       title={title}
-      description="Reusable forms of sections and questions for employee evaluations."
+      description="Create and manage reusable forms for employee performance evaluations."
       actions={
         <Suspense fallback={null}>
           <BehavioralTemplateCreateAction />

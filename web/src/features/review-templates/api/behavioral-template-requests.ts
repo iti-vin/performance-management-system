@@ -20,8 +20,13 @@ export function fetchBehavioralTemplates(accessToken: string) {
   return getRequest("behavioral-assessment", accessToken);
 }
 
-export function fetchBehavioralTemplate(accessToken: string, templateId: string) {
-  return getRequest(`behavioral-assessment/${templateId}`, accessToken);
+export function fetchBehavioralTemplate(accessToken: string, templateId: string, version?: number) {
+  const suffix = version ? `/versions/${version}` : "";
+  return getRequest(`behavioral-assessment/${templateId}${suffix}`, accessToken);
+}
+
+export function fetchBehavioralTemplateVersions(accessToken: string, templateId: string) {
+  return getRequest(`behavioral-assessment/${templateId}/versions`, accessToken);
 }
 
 function postRequest(path: string, accessToken: string, body?: unknown) {
@@ -55,6 +60,10 @@ export function postBehavioralTemplateVersion(
   body: unknown,
 ) {
   return postRequest(`behavioral-assessment/${templateId}/versions`, accessToken, body);
+}
+
+export function postArchiveBehavioralTemplate(accessToken: string, templateId: string) {
+  return postRequest(`behavioral-assessment/${templateId}/archived`, accessToken);
 }
 
 export function postPublishBehavioralTemplate(accessToken: string, templateId: string) {

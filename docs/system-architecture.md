@@ -54,17 +54,18 @@ Deployment targets are not recorded in the repository. `docs/workspace-blueprint
 
 ### 1.2 Implementation status
 
-| Area                                                                              | State                                                                                                                                                                                          |
-| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Authentication (login, refresh, current user)                                     | Wired end to end: web server action, API, httpOnly cookie, route gate                                                                                                                          |
-| Workspace shell (sidebar by role, header, notification menu, account menu, theme) | Built                                                                                                                                                                                          |
-| KPI Goal Templates (list, details, create, edit, publish, new version)            | Wired end to end across shared-types, backend, and web                                                                                                                                         |
-| Employees API                                                                     | Built in the backend. The web `employees` page is a placeholder                                                                                                                                |
-| Behavioral assessment templates API                                               | Built in the backend. The web page is a placeholder and `behavioral-template-editor.tsx` is not routed                                                                                         |
-| Review cycles, evaluations, position goals components                             | Components exist in `web/src/features`. No page uses them. `review-cycles/page.tsx` shows that the service is not connected                                                                    |
-| Placeholder pages                                                                 | `202-files`, `employees`, `goals`, `my-team`, `pip`, `reports`, `reviews`, `behavioral-assessment-template`                                                                                    |
-| Dashboard                                                                         | Page header only                                                                                                                                                                               |
-| Database tables                                                                   | 39 tables in schema `pms` (`packages/database/schema/`), none in `public`. Backend entities exist only for accounts, employees, roles, KPI goal templates, and behavioral assessment templates |
+| Area                                                                              | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authentication (login, refresh, current user)                                     | Wired end to end: web server action, API, httpOnly cookie, route gate                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Workspace shell (sidebar by role, header, notification menu, account menu, theme) | Built                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| KPI Goal Templates (list, details, create, edit, publish, new version)            | Wired end to end across shared-types, backend, and web                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Employees API                                                                     | Built in the backend. The web `employees` page is a placeholder                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Behavioral assessment templates API                                               | Built in the backend. The web page is a placeholder and `behavioral-template-editor.tsx` is not routed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Review cycles, evaluations, position goals components                             | The register (`review-cycles-table.tsx`, `review-cycles-content.tsx`) is wired to `GET /review-cycles`. `/review-cycles/new` is the create wizard and `/review-cycles/[cycle-id]/edit` edits a draft (details, participants, templates, stages, review, with readiness per step). The edit page also launches and cancels. `/review-cycles/[cycle-id]` shows a launched or finished cycle (Overview, Participants, Progress, Results) and cancels a scheduled or active one. The register, Goals of others, and the behavioral templates filter in the browser. `/reviews` lists the review assignments from `GET /reviews`, with tabs, filtered and paged by the server. `/reviews/[assignment-id]` shows one review, saves a draft, and submits it. |
+| KPI accomplishments                                                               | `/goals` lists the KPI reports from `GET /accomplishments`: your own, then those of your team or company. `/goals/[accomplishment-id]` shows one report with its frozen indicators and history; the employee saves and submits it, and the current manager verifies or returns it                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Placeholder pages                                                                 | `202-files`, `employees`, `my-team`, `pip`, `reports`, `behavioral-assessment-template`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Dashboard                                                                         | Page header only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Database tables                                                                   | 39 tables in schema `pms` (`packages/database/schema/`), none in `public`. Backend entities exist only for accounts, employees, roles, KPI goal templates, and behavioral assessment templates                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ---
 
@@ -211,8 +212,6 @@ performance-management-system/
 
 Each feature is one module under `src/modules/`. Every folder inside a module holds one kind of file and every file has one job.
 
-86 tracked files.
-
 ```text
 backend/                                                # @pms/backend: NestJS API (expanded in 3.3)
 ├── src/
@@ -221,11 +220,25 @@ backend/                                                # @pms/backend: NestJS A
 │   │   │   └── matches.decorator.ts                    # Validator: one field equals another
 │   │   ├── dtos/
 │   │   │   └── api-response.dto.ts                     # Swagger description of the error envelope
+│   │   ├── entities/
+│   │   │   └── audit-event.entity.ts                   # pms.audit_events: append-only, the code only inserts (written by common/audit/write-audit.ts)
 │   │   ├── filters/
 │   │   │   ├── api-exception.filter.spec.ts
 │   │   │   └── api-exception.filter.ts                 # Global filter: every failure leaves as the shared error envelope
-│   │   └── guards/
-│   │       └── jwt-auth.guard.ts                       # Requires a valid Bearer JWT
+│   │   ├── guards/
+│   │   │   └── jwt-auth.guard.ts                       # Requires a valid Bearer JWT
+│   │   ├── rate-limit/
+│   │   │   ├── global-interceptors.ts                  # The interceptors of every request
+│   │   │   ├── rate-limit.decorator.ts                 # The routes with their own limits
+│   │   │   ├── rate-limit.interceptor.ts               # 429 with Retry-After over a limit
+│   │   │   └── rate-limiter.ts                         # Fixed windows in memory
+│   │   └── pipes/
+│   │       ├── parse-guid.pipe.spec.ts
+│   │       ├── global-pipes.ts                         # The pipes of every request
+│   │       ├── nul-character.pipe.ts                   # 400 for input with a NUL character
+│   │       ├── parse-version.pipe.spec.ts
+│   │       ├── parse-version.pipe.ts                      # A version number of a route: 1 to the integer limit
+│   │       └── parse-guid.pipe.ts                      # A route id: any GUID, so the dev ids without a version digit pass
 │   ├── config/
 │   │   ├── env.config.spec.ts
 │   │   └── env.config.ts                               # Zod schema of the environment variables, checked at startup
@@ -294,32 +307,103 @@ backend/                                                # @pms/backend: NestJS A
 │   │   │   │   ├── authed-user.types.ts                # Shape of request.user after JwtAuthGuard
 │   │   │   │   └── employee-status.enum.ts
 │   │   │   └── employees.module.ts
-│   │   └── kpi-goals/                                  # Routes: list, positions, get, create, update, versions, published, archived
+│   │   ├── kpi-goals/                                  # Routes: list, positions, get, create, update, versions, published, archived
+│   │   │   ├── controllers/
+│   │   │   │   ├── kpi-goals.controller.spec.ts
+│   │   │   │   └── kpi-goals.controller.ts
+│   │   │   ├── dtos/
+│   │   │   │   ├── create-kpi-goal-template.dto.ts
+│   │   │   │   ├── kpi-goal-template-contract.spec.ts  # Checks the DTOs against the shared-types contract
+│   │   │   │   ├── kpi-indicator.dto.ts
+│   │   │   │   └── update-kpi-goal-template.dto.ts
+│   │   │   ├── entities/
+│   │   │   │   ├── kpi-goal-template.entity.ts
+│   │   │   │   ├── kpi-indicator-matrix-cell.entity.ts
+│   │   │   │   ├── kpi-indicator-matrix-column.entity.ts
+│   │   │   │   ├── kpi-indicator-matrix-row.entity.ts
+│   │   │   │   ├── kpi-indicator-scale.entity.ts
+│   │   │   │   ├── kpi-indicator.entity.ts
+│   │   │   │   └── kpi-template-version.entity.ts
+│   │   │   ├── services/
+│   │   │   │   ├── company-resolver.service.spec.ts
+│   │   │   │   ├── publication-history.ts                  # Publisher and time of each template version
+│   │   │   │   ├── company-resolver.service.ts         # Company and actor GUID of the signed-in account (pms.employees)
+│   │   │   │   ├── kpi-goals.service.spec.ts
+│   │   │   │   └── kpi-goals.service.ts                # Template rules: create, update, publish, new version, archive
+│   │   │   ├── types/
+│   │   │   │   └── template-tree.types.ts
+│   │   │   └── kpi-goals.module.ts
+│   │   └── review-cycles/                              # Cycle routes (register, draft, readiness, launch, cancellation), review routes (list, one review, draft, submission), and KPI accomplishment routes
 │   │       ├── controllers/
-│   │       │   ├── kpi-goals.controller.spec.ts
-│   │       │   └── kpi-goals.controller.ts
+│   │       │   ├── accomplishments.controller.spec.ts
+│   │       │   ├── accomplishments.controller.ts       # The accomplishment routes: every signed-in role, input checked with the shared schemas
+│   │       │   ├── parsed-input.ts                     # Input parsed by its shared schema, or 400 with the fields
+│   │       │   ├── cycle-attention.controller.ts           # GET /review-cycle-attention
+│   │       │   ├── cycle-history.controller.ts             # GET /review-cycles/:id/history
+│   │       │   ├── results.controller.ts               # GET /results and /results/:participantId
+│   │       │   ├── review-cycles.controller.spec.ts
+│   │       │   ├── review-cycles.controller.ts
+│   │       │   ├── reviews.controller.spec.ts
+│   │       │   └── reviews.controller.ts               # The review routes: every signed-in role, input checked with the shared schemas
 │   │       ├── dtos/
-│   │       │   ├── create-kpi-goal-template.dto.ts
-│   │       │   ├── kpi-goal-template-contract.spec.ts  # Checks the DTOs against the shared-types contract
-│   │       │   ├── kpi-indicator.dto.ts
-│   │       │   └── update-kpi-goal-template.dto.ts
+│   │       │   ├── storable-text.ts
+│   │       │   ├── cancel-review-cycle.dto.ts
+│   │       │   ├── create-review-cycle.dto.ts          # Also the body of the replace route
+│   │       │   ├── extend-review-cycle.dto.ts          # The body of a deadline extension
+│   │       │   ├── reopen-review.dto.ts                # The body of a reopening: one reason
+│   │       │   └── review-cycle-contract.spec.ts       # Checks the DTOs against the shared-types contract
 │   │       ├── entities/
-│   │       │   ├── kpi-goal-template.entity.ts
-│   │       │   ├── kpi-indicator-matrix-cell.entity.ts
-│   │       │   ├── kpi-indicator-matrix-column.entity.ts
-│   │       │   ├── kpi-indicator-matrix-row.entity.ts
-│   │       │   ├── kpi-indicator-scale.entity.ts
-│   │       │   ├── kpi-indicator.entity.ts
-│   │       │   └── kpi-template-version.entity.ts
+│   │       │   ├── accomplishment-actual.entity.ts     # The current value of one frozen indicator
+│   │       │   ├── accomplishment-version.entity.ts    # One submission as it was sent
+│   │       │   ├── accomplishment.entity.ts            # The KPI report of one participant: opened at launch, read by the Acc-005 gate
+│   │       │   ├── assignment-response.entity.ts       # The answers of one assignment, by version
+│   │       │   ├── cycle-result-visibility.entity.ts       # Who reads the reviews and results of a cycle
+│   │       │   ├── cycle-peer-evaluator.entity.ts      # A peer who assesses a participant
+│   │       │   ├── evaluation-snapshot.entity.ts       # The finalized result of one participant
+│   │       │   ├── assignment.entity.ts                # Counted by state in the register
+│   │       │   ├── cycle-participant.entity.ts
+│   │       │   ├── cycle-stage.entity.ts
+│   │       │   ├── cycle.entity.ts
+│   │       │   └── manager-assignment.entity.ts        # Read only: the applied manager of a participant
 │   │       ├── services/
-│   │       │   ├── company-resolver.service.spec.ts
-│   │       │   ├── company-resolver.service.ts         # Company and actor GUID of the signed-in account (pms.employees)
-│   │       │   ├── kpi-goals.service.spec.ts
-│   │       │   └── kpi-goals.service.ts                # Template rules: create, update, publish, new version, archive
-│   │       ├── types/
-│   │       │   └── template-tree.types.ts
-│   │       └── kpi-goals.module.ts
+│   │       │   ├── accomplishment-rules.ts             # Pure rules: who may write, submit, and decide, and the deadlines
+│   │       │   ├── accomplishments.service.spec.ts
+│   │       │   ├── accomplishments.service.ts          # KPI reports: list, read, save, submit, verify, return
+│   │       │   ├── assert-open-cycle.ts                # The gate of every change to a running cycle
+│   │       │   ├── anonymity.ts                        # The names that anonymous stages show
+│   │       │   ├── cycle-activation.service.ts         # Schedule, unschedule, and the activation timer
+│   │       │   ├── cycle-extension.ts                  # Pure rules of a deadline extension
+│   │       │   ├── cycle-work.ts                       # What launch, schedule, and activation share
+│   │       │   ├── result-snapshots.ts                 # The evidence and scores that finalization freezes
+│   │       │   ├── cycle-attention.service.ts              # Blocked scheduled cycles and overdue work
+│   │       │   ├── cycle-history.service.ts                # The audit history of one cycle, for HR
+│   │       │   ├── result-readers.ts                       # Who reads released results and earlier answers: the stored choice and the new one
+│   │       │   ├── results.service.ts                  # Finalize, release, and read results
+│   │       │   ├── review-feedback.ts                  # The written feedback of a response
+│   │       │   ├── review-stage-cards.ts               # The stages of one participant on a review
+│   │       │   ├── scoring.ts                          # Pure scoring rules
+│   │       │   ├── cycle-facts.ts                      # Reads the facts of a cycle through the repositories it is given: readiness and launch share it
+│   │       │   ├── cycle-readiness.spec.ts
+│   │       │   ├── cycle-readiness.ts                  # Pure readiness rules: each problem with its wizard step
+│   │       │   ├── participant-resolver.spec.ts
+│   │       │   ├── participant-resolver.ts             # Employees and templates of the company into frozen participant rows
+│   │       │   ├── review-cycles.service.spec.ts
+│   │       │   ├── review-cycles.service.ts            # Register with counts, draft create and replace, cancellation, audit rows
+│   │       │   ├── review-answers.ts                   # Pure rules of the answers: fit, required, stored shape
+│   │       │   ├── review-assessment.service.spec.ts
+│   │       │   ├── review-assessment.service.ts        # One review: read, save a draft, submit, open the next stage
+│   │       │   ├── review-readers.ts                   # Who reads a review that they neither answer nor administer
+│   │       │   ├── review-reopening.ts                 # Which reviews a reopening changes
+│   │       │   ├── review-stages.ts                    # The earliest unfinished stage of a participant
+│   │       │   ├── reviews.service.spec.ts
+│   │       │   ├── reviews.service.ts                  # The All Reviews list: role scope, filters, search, order, pages
+│   │       │   └── viewer.ts                           # Who asks: company, employee GUID, administrator; the cycle states a participant reads
+│   │       ├── testing/
+│   │       │   └── memory-table-spec.ts                # In-memory repository for the specs, left out of the build
+│   │       └── review-cycles.module.ts
 │   ├── app.module.ts                                   # Config, the database connection, the feature modules
+│   ├── seed-id-routes.spec.ts                         # The template and history routes accept the seed ids
+│   ├── version-routes.spec.ts                         # The template version routes use ParseVersionPipe
 │   ├── entity-schema.spec.ts                           # Every entity maps to schema pms
 │   └── main.ts                                         # Bootstrap: ValidationPipe, ApiExceptionFilter, Swagger at /swagger, listen on PORT
 ├── .env.example                                        # Names of the environment variables, no values
@@ -356,16 +440,20 @@ Tests sit next to the file they test (`auth.service.ts` and `auth.service.spec.t
 
 #### Persistence
 
-There is no separate repository layer. Services inject TypeORM repositories and the `DataSource` directly, and open a transaction with `dataSource.transaction(...)` for multi-step writes (used in `auth.service.ts`, `account-registration.service.ts`, and four places in `kpi-goals.service.ts`). The PostgreSQL connection sets `synchronize: false`: the SQL files own the tables. The only migration file is `packages/database/migrations/2026-11-24-auth-tables-to-pms.sql`, which reads `public` and does not fit a `pms`-only database (see `docs/reviews/2026-11-24-auth-pms-schema-review.md`). Other schema changes reach an existing database through hand-run SQL scripts (see section 5.2).
+There is no separate repository layer. Services inject TypeORM repositories and the `DataSource` directly, and open a transaction with `dataSource.transaction(...)` for multi-step writes (used in `auth.service.ts`, `account-registration.service.ts`, and four places in `kpi-goals.service.ts`). The PostgreSQL connection sets `synchronize: false`: the SQL files own the tables. Migration files sit in `packages/database/migrations/` and are run by hand. `2026-11-24-auth-tables-to-pms.sql` reads `public` and does not fit a `pms`-only database (see `docs/reviews/2026-11-24-auth-pms-schema-review.md`). Other schema changes reach an existing database through hand-run SQL scripts (see section 5.2).
 
 #### API surface
 
-| Controller                       | Base route               | Guards                                                                         | Routes                                                                                                                                |
-| -------------------------------- | ------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `AuthController`                 | `/auth`                  | `JwtAuthGuard` on `me` only                                                    | `POST login`, `POST refresh-token`, `GET me`                                                                                          |
-| `EmployeesController`            | `/employees`             | `JwtAuthGuard` on the class, `AdminRoleGuard` on `:id`, `create`, `:id/update` | `GET /`, `GET :id`, `POST create`, `POST :id/update`, `GET me/profile`                                                                |
-| `KpiGoalsController`             | `/kpi-goals`             | `JwtAuthGuard` and `AdminRoleGuard` on the class                               | `GET /`, `GET positions`, `GET :id`, `POST create`, `POST :id/update`, `POST :id/versions`, `POST :id/published`, `POST :id/archived` |
-| `BehavioralAssessmentController` | `/behavioral-assessment` | `JwtAuthGuard` and `AdminRoleGuard` on the class                               | `GET /`, `GET :id`, `POST create`, `POST :id/update`, `POST :id/published`, `POST :id/versions`                                       |
+| Controller                       | Base route               | Guards                                                                         | Routes                                                                                                                                                                                                                                                                                                                            |
+| -------------------------------- | ------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AuthController`                 | `/auth`                  | `JwtAuthGuard` on `me` only                                                    | `POST login`, `POST refresh-token`, `GET me`                                                                                                                                                                                                                                                                                      |
+| `EmployeesController`            | `/employees`             | `JwtAuthGuard` on the class, `AdminRoleGuard` on `:id`, `create`, `:id/update` | `GET /`, `GET :id`, `POST create`, `POST :id/update`, `GET me/profile`                                                                                                                                                                                                                                                            |
+| `KpiGoalsController`             | `/kpi-goals`             | `JwtAuthGuard` and `AdminRoleGuard` on the class                               | `GET /`, `GET positions`, `GET :id`, `POST create`, `POST :id/update`, `POST :id/versions`, `POST :id/published`, `POST :id/archived`                                                                                                                                                                                             |
+| `BehavioralAssessmentController` | `/behavioral-assessment` | `JwtAuthGuard` and `AdminRoleGuard` on the class                               | `GET /`, `GET :id`, `POST create`, `POST :id/update`, `POST :id/published`, `POST :id/versions`                                                                                                                                                                                                                                   |
+| `ReviewCyclesController`         | `/review-cycles`         | `JwtAuthGuard` and `AdminRoleGuard` on the class                               | `GET /`, `GET options`, `GET :id`, `GET :id/readiness`, `GET :id/participants`, `POST /`, `PUT :id`, `POST :id/launch`, `POST :id/cancellation`, `POST :id/extension`, `POST :id/assignments/:assignmentId/reopening`, `GET :id/results`, `POST :id/finalization`, `POST :id/release`, `POST :id/schedule`, `DELETE :id/schedule` |
+| `ResultsController`              | `/results`               | `JwtAuthGuard` on the class; the service decides what each role reads          | `GET /`, `GET :participantId`                                                                                                                                                                                                                                                                                                     |
+| `ReviewsController`              | `/reviews`               | `JwtAuthGuard` on the class; the service scopes by role                        | `GET /`, `GET :id`, `PUT :id/response`, `POST :id/submission`                                                                                                                                                                                                                                                                     |
+| `AccomplishmentsController`      | `/accomplishments`       | `JwtAuthGuard` on the class; the service decides by owner and manager          | `GET /`, `GET :id`, `PUT :id/actuals`, `POST :id/submission`, `POST :id/decision`                                                                                                                                                                                                                                                 |
 
 `GET kpi-goals/positions` stays declared before `GET :id`, because a route declared after `:id` is never reached.
 
@@ -387,6 +475,7 @@ web/                                                # @pms/web: Next.js app (exp
 │       └── site.webmanifest
 ├── src/
 │   ├── api/                                        # Server-side HTTP client
+│   │   ├── authorized-requests.ts                  # GET, PUT, and POST with the session token and a time limit
 │   │   ├── api-client.ts                           # Server-only axios client (http adapter, no redirects)
 │   │   └── api-url.ts                              # Builds a backend URL from PMS_API_BASE_URL, http or https only
 │   ├── app/                                        # Routes only
@@ -400,7 +489,12 @@ web/                                                # @pms/web: Next.js app (exp
 │   │   │   ├── employees/
 │   │   │   │   └── page.tsx                        # Placeholder page
 │   │   │   ├── goals/
-│   │   │   │   └── page.tsx                        # Placeholder page
+│   │   │   │   ├── [accomplishment-id]/
+│   │   │   │   │   ├── page.tsx                    # One KPI report
+│   │   │   │   │   └── record-content.tsx          # Reads the report and binds its actions
+│   │   │   │   ├── goals-content.tsx               # Joins the account of auth and the list of position goals
+│   │   │   │   ├── goals-description.tsx             # What Goals holds for the signed-in role
+│   │   │   │   └── page.tsx                        # The KPI reports, read from GET /accomplishments
 │   │   │   ├── my-team/
 │   │   │   │   └── page.tsx                        # Placeholder page
 │   │   │   ├── pip/
@@ -408,11 +502,22 @@ web/                                                # @pms/web: Next.js app (exp
 │   │   │   ├── reports/
 │   │   │   │   └── page.tsx                        # Placeholder page
 │   │   │   ├── review-cycles/
-│   │   │   │   └── page.tsx                        # Shows that the Review Cycles service is not connected
+│   │   │   │   ├── [cycle-id]/
+│   │   │   │   │   ├── edit/
+│   │   │   │   │   │   └── page.tsx                # The wizard of a draft, with launch and cancel
+│   │   │   │   │   ├── details-content.tsx         # Reads the cycle and its participants; a draft goes to the wizard
+│   │   │   │   │   └── page.tsx                    # Cycle Details
+│   │   │   │   ├── new/
+│   │   │   │   │   └── page.tsx                    # The create wizard
+│   │   │   │   ├── create-cycle-action.tsx             # Create Cycle, for an HR administrator only
+│   │   │   │   └── page.tsx                        # The review cycle register, read from GET /review-cycles
 │   │   │   ├── reviews/
+│   │   │   │   ├── [assignment-id]/
+│   │   │   │   │   ├── page.tsx                    # One review
+│   │   │   │   │   └── review-content.tsx          # Joins the summary of review-cycles and the form of evaluations
 │   │   │   │   ├── templates/
 │   │   │   │   │   ├── behavioral-assessment-template/
-│   │   │   │   │   │   ├── [templateId]/
+│   │   │   │   │   │   ├── [template-id]/
 │   │   │   │   │   │   │   ├── edit/
 │   │   │   │   │   │   │   │   └── page.tsx
 │   │   │   │   │   │   │   └── page.tsx
@@ -420,14 +525,14 @@ web/                                                # @pms/web: Next.js app (exp
 │   │   │   │   │   │   │   └── page.tsx
 │   │   │   │   │   │   └── page.tsx                # The list of templates
 │   │   │   │   │   └── kpi-goal-template/
-│   │   │   │   │       ├── [templateId]/
+│   │   │   │   │       ├── [template-id]/
 │   │   │   │   │       │   ├── edit/
 │   │   │   │   │       │   │   └── page.tsx        # Edit (an archived template goes back to its details)
 │   │   │   │   │       │   └── page.tsx            # Details
 │   │   │   │   │       ├── new/
 │   │   │   │   │       │   └── page.tsx            # Builder for a new template
 │   │   │   │   │       └── page.tsx                # List: tabs, search, status filter, pagination
-│   │   │   │   └── page.tsx                        # Placeholder page
+│   │   │   │   └── page.tsx                        # All Reviews, read from GET /reviews
 │   │   │   ├── error.tsx
 │   │   │   ├── layout.tsx                          # Reads the current user, then renders the workspace shell
 │   │   │   ├── loading.tsx
@@ -471,6 +576,8 @@ web/                                                # @pms/web: Next.js app (exp
 │   │   ├── organisms/                              # Data table, charts, error and not-found states, notification menu
 │   │   │   ├── bar-chart.tsx
 │   │   │   ├── data-table.tsx
+│   │   │   ├── list-memory.ts                          # List state that comes back with the page
+│   │   │   ├── filtered-table.tsx                  # Tabs, search, filters, and pages over a list that the page holds whole
 │   │   │   ├── donut-chart.tsx
 │   │   │   ├── error-state.tsx
 │   │   │   ├── not-found-state.tsx
@@ -547,28 +654,84 @@ web/                                                # @pms/web: Next.js app (exp
 │   │   │       ├── session-guard.ts                # Route decisions from the token exp claim
 │   │   │       ├── sign-out.ts
 │   │   │       └── submit-credentials.ts           # Server action: posts credentials, stores the cookie
-│   │   ├── evaluations/                            # Not routed to a page yet
+│   │   ├── evaluations/                            # The review form of /reviews/[assignment-id]
 │   │   │   ├── components/
-│   │   │   │   └── evaluator-scoring-form.tsx
+│   │   │   │   ├── evaluator-scoring-form.tsx
+│   │   │   │   ├── review-question-field.tsx
+│   │   │   │   ├── review-history.tsx              # The earlier submitted versions of a review
+│   │   │   │   ├── rating-field.tsx                # One rating as a radio group
+│   │   │   │   └── review-completion.tsx           # Required answered and the actions
 │   │   │   └── services/
 │   │   │       └── assessment-request.ts
-│   │   ├── position-goals/                         # Not routed to a page yet
+│   │   ├── position-goals/                         # KPI reports: /goals and /goals/[accomplishment-id]
+│   │   │   ├── api/
+│   │   │   │   └── accomplishment-requests.ts      # Server-only HTTP calls to /accomplishments
 │   │   │   ├── components/
-│   │   │   │   ├── kpi-reporting-form.tsx
-│   │   │   │   └── kpi-verification-panel.tsx
+│   │   │   │   ├── accomplishment-history.tsx      # Every submission as it was sent
+│   │   │   │   ├── accomplishment-record.tsx       # One report: state, actions, dialogs, leave guard
+│   │   │   │   ├── indicator-table.tsx             # The indicators with their fields or words
+│   │   │   │   ├── indicator-criteria.tsx          # The frozen criteria, closed until asked for
+│   │   │   │   ├── accomplishment-summary.tsx      # Who, which cycle, until when, and why it is read only
+│   │   │   │   ├── accomplishment-values.tsx       # The report as words
+│   │   │   │   ├── accomplishments-list.tsx        # Your reports, then those of others, waiting ones first
+│   │   │   │   ├── accomplishments-table.tsx
+│   │   │   │   ├── goals-notice.tsx                # The read that stopped the page
+│   │   │   │   ├── kpi-indicator-card.tsx          # One frozen indicator with its criteria and matrix
+│   │   │   │   ├── kpi-reporting-form.tsx          # The fields of the employee
+│   │   │   │   └── kpi-verification-panel.tsx      # Return with a reason, or verify
 │   │   │   └── services/
-│   │   │       └── actuals-request.ts
-│   │   ├── review-cycles/                          # Not routed to a page yet
-│   │   │   └── components/
-│   │   │       ├── cycle-details-form.tsx
-│   │   │       ├── cycle-launch-summary.tsx
-│   │   │       ├── cycle-setup-stepper.tsx
-│   │   │       ├── evaluation-workflow.tsx
-│   │   │       ├── goal-mapping-editor.tsx
-│   │   │       ├── goal-readiness.tsx
-│   │   │       ├── participant-selection.tsx
-│   │   │       ├── release-settings.tsx
-│   │   │       └── review-cycles-table.tsx
+│   │   │       ├── accomplishment-reader.ts        # Reads the list and one report with the session token
+│   │   │       ├── accomplishment-response.ts      # Server actions: save, submit, decide
+│   │   │       ├── actuals-request.ts              # The form draft into the request body
+│   │   │       ├── target-result.ts                # Target met or below, by direction
+│   │   │       └── kpi-template-label.ts           # The KPI template of a record, by name or position
+│   │   ├── review-cycles/                          # The register, the cycle wizard, launch and cancel, and All Reviews
+│   │   │   ├── api/
+│   │   │   │   └── review-cycle-requests.ts        # Server-only HTTP call to /review-cycles
+│   │   │   ├── components/
+│   │   │   │   ├── cycle-details.tsx               # Cycle Details: header, Cancel Cycle, and the four tabs
+│   │   │   │   ├── cycle-details-form.tsx
+│   │   │   │   ├── cycle-overview.tsx              # Cycle Details: dates and settings
+│   │   │   │   ├── cycle-participants-tab.tsx      # Cycle Details: one row per participant
+│   │   │   │   ├── cycle-progress-tab.tsx          # Cycle Details: completion, one row per assignment, and Reopen
+│   │   │   │   ├── extend-deadlines-dialog.tsx     # Cycle Details: later deadlines with a reason
+│   │   │   │   ├── anonymous-stages.tsx            # Wizard: peer and upward stages, peers, anonymity minimum
+│   │   │   │   ├── cycle-results-tab.tsx           # Cycle Details: finalize, release, and results
+│   │   │   │   ├── result-details.tsx              # One finalized result
+│   │   │   │   ├── results-table.tsx               # A list of results
+│   │   │   │   ├── review-assessment-header.tsx    # One review: stage cards and the goals link
+│   │   │   │   ├── cycle-setup-stepper.tsx
+│   │   │   │   ├── participant-selection.tsx
+│   │   │   │   ├── cycle-manage.tsx                # Launch Cycle and Cancel Cycle with their dialogs
+│   │   │   │   ├── cycle-stages-step.tsx           # Wizard step: three stages with deadlines and the HR evaluator
+│   │   │   │   ├── cycle-templates-step.tsx        # Wizard step: KPI match per participant, behavioral default and overrides
+│   │   │   │   ├── cycle-wizard.tsx                # The create wizard: five steps, save as draft, leave guard
+│   │   │   │   ├── review-cycle-saved-notice.tsx
+│   │   │   │   ├── review-cycles-content.tsx       # The register, or a notice when the read failed
+│   │   │   │   ├── review-list.tsx                 # All Reviews: search, filters, and pages that live in the URL
+│   │   │   │   ├── review-list-notice.tsx          # All Reviews: the read that stopped the page
+│   │   │   │   ├── review-summary.tsx              # One review: who, which stage, the deadline, and why it is read only
+│   │   │   │   ├── review-template-card.tsx        # The template of one review
+│   │   │   │   ├── reviews-content.tsx             # All Reviews: the role chooses the filters; a page past the end redirects
+│   │   │   │   ├── reviews-table.tsx               # All Reviews: one row per assignment, read only
+│   │   │   │   └── review-cycles-table.tsx
+│   │   │   └── services/
+│   │   │       ├── cycle-components.ts             # Component weights and their words
+│   │   │       ├── result-reader.ts                # Reads results with the session token
+│   │   │       ├── history-words.ts                    # The values of a history entry as people read them
+│   │   │       ├── result-reader-choices.ts            # The reader choices of the wizard and the release
+│   │   │       ├── results-csv.ts                      # The export of the listed results
+│   │   │       ├── result-words.ts                 # Scores and weights as people read them
+│   │   │       ├── cycle-changes.ts                # When a cycle is open to changes, and the words of a reopening
+│   │   │       ├── cycle-draft.ts                  # Wizard draft: Manila instants, KPI match, request builder, step of a problem
+│   │   │       ├── cycle-progress.ts               # Counts of assignments and the status of a participant
+│   │   │       ├── status-filter.ts                # The status filter of Cycle Details, with Overdue
+│   │   │       ├── review-list-params.ts           # All Reviews: the URL state, read with the shared query contract
+│   │   │       ├── review-response.ts              # Server actions: save a draft and submit a review
+│   │   │       ├── review-cycle-reader.ts          # Reads the register, the wizard options, and the All Reviews page with the session token
+│   │   │       ├── launch-confirmation.ts          # The words of the dialog before a launch
+│   │   │       ├── manage-review-cycle.ts          # Server actions: launch, cancel, extend, and reopen
+│   │   │       └── save-review-cycle.ts            # Server action: checks the body again, posts the draft, redirects
 │   │   └── review-templates/                       # KPI Goal Templates (wired to the API) and the behavioral template editor (not routed)
 │   │       ├── api/
 │   │       │   ├── behavioral-template-requests.ts
@@ -587,11 +750,12 @@ web/                                                # @pms/web: Next.js app (exp
 │   │       │   ├── goal-template-list.tsx
 │   │       │   ├── goal-template-listing.tsx
 │   │       │   ├── goal-template-notice.tsx
+│   │       │   ├── template-archive-action.tsx
+│   │       │   ├── template-version-history.tsx
 │   │       │   ├── goal-template-saved-notice.tsx
 │   │       │   ├── indicator-matrix-editor.tsx     # Matrix and threshold scale editor of one indicator
 │   │       │   └── kpi-goal-template-editor.tsx    # Builder, read-only details mode, draft edit, published edit
 │   │       └── services/
-│   │           ├── api-error-text.ts
 │   │           ├── behavioral-template-editor-state.ts
 │   │           ├── behavioral-template-reader.ts
 │   │           ├── behavioral-template-state.ts
@@ -608,6 +772,7 @@ web/                                                # @pms/web: Next.js app (exp
 │   │           └── template-requests.ts            # Turns editor state into a request body
 │   ├── hooks/                                      # Hooks shared by two or more features
 │   │   ├── use-mobile.ts
+│   │   ├── use-problem-focus.ts                    # The focus on the first problem after an action
 │   │   └── use-unsaved-changes-warning.ts
 │   ├── layouts/                                    # Page shells used by the route group layouts
 │   │   ├── auth-layout.tsx
@@ -627,34 +792,48 @@ web/                                                # @pms/web: Next.js app (exp
 │   │   └── typography.css
 │   ├── types/                                      # UI view types
 │   │   ├── chart.ts
-│   │   ├── employee.ts
-│   │   ├── kpi-indicator.ts
+│   │   ├── form-action.ts
 │   │   ├── person.ts
-│   │   ├── review-question.ts
 │   │   └── role.ts
+│   ├── services/
+│   │   ├── api-read.ts                             # A read with the session token, checked by its schema
+│   │   └── api-send.ts                             # A write with the session token, and the words of a refusal
 │   ├── utils/
-│   │   └── csv.ts                                  # CSV cell quoting that neutralizes formula characters
+│   │   ├── api-error-text.ts                       # The words of an API error for a form
+│   │   ├── csv.ts                                  # CSV cell quoting that neutralizes formula characters
+│   │   ├── form-problems.ts                        # The problems of a form after a field changes
+│   │   ├── load-page.ts                               # Opens a page as a new document
+│   │   ├── signed-in-document.ts                      # The login page drops a document that showed a signed-in page
+│   │   └── workspace-date.ts                       # An instant as a workspace date
 │   └── proxy.ts                                    # Runs before each page request: session gate and sliding token refresh
 ├── tests/
 │   ├── component/                                  # Rendered components
 │   │   ├── .gitkeep
+│   │   ├── accomplishment-page.test.tsx
+│   │   ├── accomplishment-record.test.tsx
 │   │   ├── behavioral-template-create-form.test.tsx
 │   │   ├── behavioral-template-details-view.test.tsx
 │   │   ├── behavioral-template-edit-form.test.tsx
 │   │   ├── behavioral-template-editor-leave.test.tsx
 │   │   ├── behavioral-template-list.test.tsx
+│   │   ├── cycle-details.test.tsx
+│   │   ├── list-filters.test.tsx
 │   │   ├── credentials-form.test.tsx
 │   │   ├── goal-template-create-form.test.tsx
 │   │   ├── goal-template-edit-modes.test.tsx
 │   │   ├── goal-template-listing.test.tsx
 │   │   ├── goal-template-publish-confirmation.test.tsx
 │   │   ├── goal-template-saved-notice.test.tsx
+│   │   ├── goals-list.test.tsx
+│   │   ├── sample-wording.test.tsx
 │   │   ├── indicator-matrix-editor.test.tsx
 │   │   └── workspace-account-menu.test.tsx
 │   ├── e2e/                                        # Empty (.gitkeep only)
 │   │   └── .gitkeep
 │   ├── integration/                                # Server actions and services
 │   │   ├── .gitkeep
+│   │   ├── accomplishment-reader.test.ts
+│   │   ├── accomplishment-response.test.ts
 │   │   ├── behavioral-template-reader.test.ts
 │   │   ├── create-goal-template.test.ts
 │   │   ├── goal-template-reader.test.ts
@@ -666,7 +845,10 @@ web/                                                # @pms/web: Next.js app (exp
 │   │   └── workspace-session.test.ts
 │   ├── unit/                                       # Pure functions and rules
 │   │   ├── .gitkeep
+│   │   ├── actuals-request.test.ts
+│   │   ├── target-result.test.ts
 │   │   ├── api-error-text.test.ts
+│   │   ├── app-folder-names.test.ts
 │   │   ├── behavioral-template-editor-state.test.ts
 │   │   ├── behavioral-template-requests.test.ts
 │   │   ├── behavioral-template-state.test.ts
@@ -678,6 +860,7 @@ web/                                                # @pms/web: Next.js app (exp
 │   │   ├── session-guard.test.ts
 │   │   └── template-requests.test.ts
 │   ├── utils/
+│   │   ├── accomplishment.ts                       # One KPI report for the tests
 │   │   └── render.tsx                              # Shared render helper
 │   └── setup.ts
 ├── .env.example                                    # Names of the environment variables, no values
@@ -820,6 +1003,7 @@ packages/                        # Internal packages (expanded in 3.5)
 │   │   │   ├── template-version-status.enum.ts
 │   │   │   └── verification-status.enum.ts
 │   │   ├── dtos/                # Request and response schemas, one file per topic
+│   │   │   ├── accomplishment.schema.ts
 │   │   │   ├── auth.schema.ts
 │   │   │   ├── behavioral-template.schema.ts
 │   │   │   ├── error.schema.ts  # The error envelope: codes, createApiError, readApiError
@@ -831,6 +1015,8 @@ packages/                        # Internal packages (expanded in 3.5)
 │   │   │   ├── nte.schema.ts
 │   │   │   ├── organization.schema.ts
 │   │   │   ├── pip.schema.ts
+│   │   │   ├── review-detail.schema.ts
+│   │   │   ├── review-list.schema.ts
 │   │   │   └── review-cycle.schema.ts
 │   │   ├── rows/                # Generated: one row schema per table
 │   │   │   ├── accomplishment-actuals.row.ts
@@ -1150,7 +1336,8 @@ Gaps marked "(handoff)" come from `docs/handoffs/2026-11-19-kpi-goal-templates.m
 
 | Gap                               | Detail                                                                                                                                                                                                                                                                                                   | State                                                                 |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Company scoping (handoff)         | List, details, and write routes of `kpi-goals` do not filter by company. Every admin sees every template (CWE-639). `CompanyResolver` resolves the company for the writes but the routes do not enforce it                                                                                               | Needs the backend owner's decision                                    |
+| Company scoping (kpi-goals)       | Fixed on 2026-11-26 (CWE-639): list, read, update, publish, new version, and archive read inside the company of the account                                                                                                                                                                              | Closed                                                                |
+| Company scoping (behavioral)      | Fixed on 2026-11-26 (CWE-639): list, read, update, publish, and new version read inside the company of the account                                                                                                                                                                                       | Closed                                                                |
 | Schema drift                      | The SQL files own the tables and every entity maps to `pms`. A database made before PR #8 has the old table shapes, and `schema.sql` does not alter existing tables. Eight schema files still reference `pms.companies` and `pms.positions`, which `schema.sql` no longer creates, so a fresh load fails | Open, recorded in `docs/reviews/2026-11-24-auth-pms-schema-review.md` |
 | No migrations                     | Schema changes reach an existing database through scripts run by hand from `.codex/scripts` (local, not tracked). `schema.sql` never alters a table                                                                                                                                                      | Open                                                                  |
 | Guard coverage                    | `GET /employees` has `JwtAuthGuard` only (the behavioral controller got `AdminRoleGuard` on 2026-11-24)                                                                                                                                                                                                  | Confirm intended access with the owner                                |

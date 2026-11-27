@@ -11,6 +11,8 @@ export * from "./behavioral-sections.row.js";
 export * from "./behavioral-template-versions.row.js";
 export * from "./behavioral-templates.row.js";
 export * from "./cycle-participants.row.js";
+export * from "./cycle-peer-evaluators.row.js";
+export * from "./cycle-result-visibility.row.js";
 export * from "./cycle-stages.row.js";
 export * from "./cycles.row.js";
 export * from "./employees.row.js";

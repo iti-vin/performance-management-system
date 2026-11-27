@@ -7,7 +7,7 @@ import {
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { apiErrorText } from "@/features/review-templates/services/api-error-text";
+import { apiErrorText } from "@/utils/api-error-text";
 import { BEHAVIORAL_TEMPLATE_PATH } from "@/constants/behavioral-template-path";
 import { SESSION_COOKIE } from "@/features/auth/services/session-cookie";
 import {

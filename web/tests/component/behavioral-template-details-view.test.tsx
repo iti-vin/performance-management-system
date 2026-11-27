@@ -3,10 +3,11 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BehavioralTemplateDetailsView } from "@/features/review-templates/components/behavioral-template-details-view";
-import { publishBehavioralTemplate } from "@/features/review-templates/services/manage-behavioral-template";
+import { archiveBehavioralTemplate, publishBehavioralTemplate } from "@/features/review-templates/services/manage-behavioral-template";
 
 vi.mock("@/features/review-templates/services/manage-behavioral-template", () => ({
   publishBehavioralTemplate: vi.fn(),
+  archiveBehavioralTemplate: vi.fn(),
   saveBehavioralTemplateEdits: vi.fn(),
 }));
 
@@ -47,6 +48,7 @@ function tree(status: "draft" | "published" | "archived" = "draft"): BehavioralT
 
 beforeEach(() => {
   vi.mocked(publishBehavioralTemplate).mockReset().mockResolvedValue({ message: "" });
+  vi.mocked(archiveBehavioralTemplate).mockReset().mockResolvedValue({ message: "" });
 });
 
 describe("BehavioralTemplateDetailsView", () => {
@@ -128,5 +130,26 @@ describe("BehavioralTemplateDetailsView", () => {
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Publish Template" }));
 
     expect(await screen.findByText("The template is already published.")).toBeTruthy();
+  });
+});
+
+describe("BehavioralTemplateDetailsView, Archive", () => {
+  it.each(["draft", "published"] as const)("asks first, and archives a %s template once the user confirms", async (status) => {
+    const user = userEvent.setup();
+    render(<BehavioralTemplateDetailsView tree={tree(status)} />);
+
+    await user.click(screen.getByRole("button", { name: "Archive" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Archive this template?" });
+    expect(archiveBehavioralTemplate).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Archive Template" }));
+
+    expect(archiveBehavioralTemplate).toHaveBeenCalledWith(id(1));
+  });
+
+  it("offers no Archive for an archived template", () => {
+    const status = "archived" as const;
+    render(<BehavioralTemplateDetailsView tree={tree(status)} />);
+
+    expect(screen.queryByRole("button", { name: "Archive" })).toBeNull();
   });
 });

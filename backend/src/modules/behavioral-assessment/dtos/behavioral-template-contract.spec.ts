@@ -3,6 +3,7 @@ import { plainToInstance } from "class-transformer";
 import { validate, type ValidationError } from "class-validator";
 import { describe, expect, it } from "vitest";
 import { CreateBehavioralTemplateDto } from "./create-behavioral-template.dto.js";
+import { SectionDto } from "./behavioral-section.dto.js";
 import { UpdateBehavioralTemplateDto } from "./update-behavioral-template.dto.js";
 
 // Validate the way main.ts does, so a key the DTO lacks fails here too.
@@ -97,5 +98,13 @@ describe("behavioral template request contract", () => {
   it("refuses a section with no question, and a template with no section", () => {
     expect(saveBehavioralTemplateRequestSchema.safeParse({ sections: [] }).success).toBe(false);
     expect(saveBehavioralTemplateRequestSchema.safeParse({ sections: [{ title: "S", questions: [] }] }).success).toBe(false);
+  });
+});
+
+describe('section and question text', () => {
+  it('refuses a title and a prompt with spaces only (Tpl-B-003)', async () => {
+    const errors = await validate(plainToInstance(SectionDto, { title: '  ', questions: [{ prompt: '  ', questionType: 'short_answer' }] }));
+
+    expect(errors.map((error) => error.property)).toEqual(['title', 'questions']);
   });
 });

@@ -33,6 +33,7 @@ const ROW = {
   archivedAt: null,
   createdAt: "2026-11-24T06:00:00.000Z",
   updatedAt: "2026-11-24T06:00:00.000Z",
+  questionCount: 6,
 };
 
 beforeEach(() => {
@@ -91,7 +92,7 @@ describe("getBehavioralTemplate", () => {
 
     const result = await getBehavioralTemplate(TEMPLATE_ID);
 
-    expect(fetchBehavioralTemplate).toHaveBeenCalledWith("token", TEMPLATE_ID);
+    expect(fetchBehavioralTemplate).toHaveBeenCalledWith("token", TEMPLATE_ID, undefined);
     expect(result).toMatchObject({ kind: "ok", data: { template: { templateId: TEMPLATE_ID } } });
   });
 });

@@ -51,6 +51,15 @@ describe("submitCredentials", () => {
     expect(setCookie).not.toHaveBeenCalled();
   });
 
+  it("says to wait when the API limits the requests, and saves no session", async () => {
+    post.mockResolvedValueOnce({ status: 429, data: {} });
+
+    await expect(submitCredentials("login", { identifier: "janedoe", password })).resolves.toEqual({
+      message: "Too many attempts. Wait a minute and try again.",
+    });
+    expect(setCookie).not.toHaveBeenCalled();
+  });
+
   it.each(["sign-up", "register"])(
     "refuses the removed %s mode and sends no request",
     async (mode) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import { CircleAlert } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
@@ -12,8 +12,10 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { forgetListMemory } from "@/components/organisms/list-memory";
 import { PasswordInput } from "@/features/auth/components/password-input";
 import { useCredentialsForm } from "@/features/auth/hooks/use-credentials-form";
+import { leaveSignedInDocument } from "@/utils/signed-in-document";
 
 export function CredentialsForm() {
   const id = useId();
@@ -25,6 +27,12 @@ export function CredentialsForm() {
     submit,
     fields,
   } = useCredentialsForm();
+
+  // Every way out of a session ends here: the next user starts with no list state of the last one.
+  useEffect(() => {
+    forgetListMemory();
+    leaveSignedInDocument();
+  }, []);
 
   return (
     <form

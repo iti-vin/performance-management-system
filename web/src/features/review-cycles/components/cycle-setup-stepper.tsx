@@ -3,11 +3,11 @@
 import { Stepper } from "@/components/molecules/stepper";
 
 const STEPS = [
-  "Cycle details",
-  "Select participants",
-  "Evaluation setup",
-  "Assessment workflow",
-  "Review and launch",
+  "Cycle Details",
+  "Select Participants",
+  "Evaluation Setup",
+  "Assessment Workflow",
+  "Review & Launch",
 ];
 
 interface CycleSetupStepperProps {

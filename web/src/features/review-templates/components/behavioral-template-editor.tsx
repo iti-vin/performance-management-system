@@ -644,7 +644,7 @@ function ScaleStrip() {
   return (
     <ol
       aria-label="Rating scale"
-      className="flex flex-wrap justify-between gap-2 rounded-pms-control bg-muted px-3 py-2 text-pms-label text-muted-foreground"
+      className="flex flex-wrap justify-between gap-2 rounded-pms-control bg-muted/30 px-3 py-2 text-pms-label text-muted-foreground"
     >
       {SCALE.map((step) => (
         <li key={step}>{step}</li>

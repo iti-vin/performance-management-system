@@ -12,7 +12,7 @@ import {
   postCreateGoalTemplate,
   postPublishGoalTemplate,
 } from "@/features/review-templates/api/goal-template-requests";
-import { apiErrorText } from "@/features/review-templates/services/api-error-text";
+import { apiErrorText } from "@/utils/api-error-text";
 import { GOAL_TEMPLATE_PATH } from "@/constants/goal-template-path";
 
 type CreateResult = { message: string };

@@ -1,4 +1,5 @@
 import type {
+  AccomplishmentStatus,
   BehavioralQuestionType,
   BehavioralReviewType,
   BehavioralTemplateCategory,
@@ -10,6 +11,7 @@ import type {
   MatrixKind,
   NteStatus,
   PipStatus,
+  ReviewType,
   ScaleBound,
   TemplateVersionStatus,
 } from "@pms/shared-types";
@@ -113,6 +115,34 @@ export const GOAL_STATUS_TONES = {
   completed: "complete",
 } as const satisfies Record<GoalStatus, ReviewTone>;
 
+export const ACCOMPLISHMENT_STATUS_LABELS = {
+  draft: "Draft",
+  submitted: "Submitted",
+  returned: "Returned",
+  verified: "Verified",
+} as const satisfies Record<AccomplishmentStatus, string>;
+
+export const ACCOMPLISHMENT_STATUS_TONES = {
+  draft: "queued",
+  submitted: "active",
+  returned: "alert",
+  verified: "complete",
+} as const satisfies Record<AccomplishmentStatus, ReviewTone>;
+
+/** The status of one reported value: a sent value waits for the manager. */
+export const INDICATOR_STATUS_LABELS = {
+  draft: "Draft",
+  submitted: "Pending verification",
+  returned: "Returned",
+  verified: "Verified",
+} as const satisfies Record<AccomplishmentStatus, string>;
+
+export const TARGET_RESULT_LABELS = { met: "Target met", below: "Below target" } as const;
+
+/** What each rating of a behavioral question means (PRD Tpl-B-002). */
+export const RATING_LABELS = { 1: "Never", 2: "Rarely", 3: "Sometimes", 4: "Often", 5: "Always" } as const;
+export const NOT_OBSERVED_LABEL = "Not Observed";
+
 export const KPI_DIRECTION_LABELS = {
   higher_is_better: "Higher is better",
   lower_is_better: "Lower is better",
@@ -155,6 +185,14 @@ export const BEHAVIORAL_REVIEW_TYPE_LABELS = {
   hr: "HR",
   others: "Others",
 } as const satisfies Record<BehavioralReviewType, string>;
+
+/** The review type of a cycle (`pms.cycles.review_type`), not of a behavioral template. */
+export const REVIEW_TYPE_LABELS = {
+  standard: "Standard Performance Review",
+  "360": "360° Feedback",
+  probationary: "Probationary Review",
+  project_based: "Project-Based Review",
+} as const satisfies Record<ReviewType, string>;
 
 export const EVALUATOR_TYPE_LABELS = {
   self: "Self",

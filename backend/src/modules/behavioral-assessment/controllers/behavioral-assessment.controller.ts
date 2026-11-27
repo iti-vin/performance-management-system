@@ -4,8 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Param,
-  ParseUUIDPipe,
+  Param,
   Post,
   Req,
   UseGuards,
@@ -21,6 +20,8 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
+import { ParseVersionPipe } from "../../../common/pipes/parse-version.pipe.js";
+import { ParseGuidPipe } from "../../../common/pipes/parse-guid.pipe.js";
 import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard.js";
 import { AdminRoleGuard } from "../../employees/guards/admin-role.guard.js";
 import type { AuthedUser } from "../../employees/types/authed-user.types.js";
@@ -44,15 +45,15 @@ export class BehavioralAssessmentController {
   constructor(private readonly service: BehavioralAssessmentService) {}
 
   @Get()
-  @ApiOperation({ summary: "list all behavioral assessment templates" })
+  @ApiOperation({ summary: "list the behavioral assessment templates of your company" })
   @ApiOkResponse({
     description: "template list",
     type: BehavioralTemplate,
     isArray: true,
   })
   @ApiUnauthorizedResponse({ description: "Unauthorized", type: ApiErrorResponseDto })
-  async list() {
-    return this.service.list();
+  async list(@Req() req: AuthedRequest) {
+    return this.service.list(req.user.userId);
   }
 
   @Get(":id")
@@ -84,8 +85,8 @@ export class BehavioralAssessmentController {
   })
   @ApiNotFoundResponse({ description: "template not found", type: ApiErrorResponseDto })
   @ApiUnauthorizedResponse({ description: "Unauthorized", type: ApiErrorResponseDto })
-  async getById(@Param("id", new ParseUUIDPipe()) templateId: string) {
-    return this.service.getById(templateId);
+  async getById(@Param("id", ParseGuidPipe) templateId: string, @Req() req: AuthedRequest) {
+    return this.service.getById(templateId, req.user.userId);
   }
 
   @Post("create")
@@ -108,8 +109,12 @@ export class BehavioralAssessmentController {
   @ApiConflictResponse({ description: "template is not in draft state" })
   @ApiNotFoundResponse({ description: "template not found", type: ApiErrorResponseDto })
   @ApiUnauthorizedResponse({ description: "Unauthorized", type: ApiErrorResponseDto })
-  async update(@Param("id", new ParseUUIDPipe()) templateId: string, @Body() dto: UpdateBehavioralTemplateDto) {
-    return this.service.update(templateId, dto);
+  async update(
+    @Param("id", ParseGuidPipe) templateId: string,
+    @Body() dto: UpdateBehavioralTemplateDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.service.update(templateId, dto, req.user.userId);
   }
 
   @Post(":id/published")
@@ -122,8 +127,39 @@ export class BehavioralAssessmentController {
   @ApiConflictResponse({ description: "template is not in draft state" })
   @ApiNotFoundResponse({ description: "template not found", type: ApiErrorResponseDto })
   @ApiUnauthorizedResponse({ description: "Unauthorized", type: ApiErrorResponseDto })
-  async publish(@Param("id", new ParseUUIDPipe()) templateId: string, @Req() req: AuthedRequest) {
+  async publish(@Param("id", ParseGuidPipe) templateId: string, @Req() req: AuthedRequest) {
     return this.service.publish(templateId, req.user.userId);
+  }
+
+  @Post(":id/archived")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "archive a draft or published template" })
+  @ApiOkResponse({ description: "the archived template" })
+  @ApiConflictResponse({ description: "template is already archived" })
+  @ApiNotFoundResponse({ description: "template not found", type: ApiErrorResponseDto })
+  @ApiUnauthorizedResponse({ description: "Unauthorized", type: ApiErrorResponseDto })
+  async archive(@Param("id", ParseGuidPipe) templateId: string, @Req() req: AuthedRequest) {
+    return this.service.archive(templateId, req.user.userId);
+  }
+
+  @Get(":id/versions")
+  @ApiOperation({ summary: "the published versions of a behavioral template, newest first" })
+  @ApiOkResponse({ description: "number, time, publisher, and whether it is current" })
+  @ApiNotFoundResponse({ description: "template not found", type: ApiErrorResponseDto })
+  async listVersions(@Param("id", ParseGuidPipe) templateId: string, @Req() req: AuthedRequest) {
+    return this.service.listVersions(templateId, req.user.userId);
+  }
+
+  @Get(":id/versions/:version")
+  @ApiOperation({ summary: "the content of one published version" })
+  @ApiOkResponse({ description: "the template with that version" })
+  @ApiNotFoundResponse({ description: "template or version not found", type: ApiErrorResponseDto })
+  async getVersion(
+    @Param("id", ParseGuidPipe) templateId: string,
+    @Param("version", ParseVersionPipe) version: number,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.service.getVersion(templateId, version, req.user.userId);
   }
 
   @Post(":id/versions")
@@ -137,7 +173,7 @@ export class BehavioralAssessmentController {
   @ApiNotFoundResponse({ description: "template not found", type: ApiErrorResponseDto })
   @ApiUnauthorizedResponse({ description: "Unauthorized", type: ApiErrorResponseDto })
   async createVersion(
-    @Param("id", new ParseUUIDPipe()) templateId: string,
+    @Param("id", ParseGuidPipe) templateId: string,
     @Body() dto: UpdateBehavioralTemplateDto,
     @Req() req: AuthedRequest,
   ) {

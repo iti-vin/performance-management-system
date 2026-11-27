@@ -5,6 +5,8 @@ import {
   goalTemplateListResponseSchema,
   goalTemplatePositionListResponseSchema,
   idSchema,
+  templateVersionListResponseSchema,
+  type TemplateVersionDto,
   type GoalTemplateDetailResponseDto,
   type GoalTemplateListResponseDto,
 } from "@pms/shared-types";
@@ -14,6 +16,7 @@ import type { z, ZodType } from "zod";
 import { SESSION_COOKIE } from "@/features/auth/services/session-cookie";
 import {
   fetchGoalTemplate,
+  fetchGoalTemplateVersions,
   fetchGoalTemplatePositions,
   fetchGoalTemplates,
 } from "@/features/review-templates/api/goal-template-requests";
@@ -72,13 +75,20 @@ export function getGoalTemplatePositions(): Promise<
   );
 }
 
+export async function getGoalTemplateVersions(templateId: string): Promise<GoalTemplateReadResult<TemplateVersionDto[]>> {
+  if (!idSchema.safeParse(templateId).success) return { kind: "not_found" };
+
+  return readTemplates((accessToken) => fetchGoalTemplateVersions(accessToken, templateId), templateVersionListResponseSchema);
+}
+
 export async function getGoalTemplate(
   templateId: string,
+  version?: number,
 ): Promise<GoalTemplateReadResult<GoalTemplateDetailResponseDto>> {
   if (!idSchema.safeParse(templateId).success) return { kind: "not_found" };
 
   return readTemplates(
-    (accessToken) => fetchGoalTemplate(accessToken, templateId),
+    (accessToken) => fetchGoalTemplate(accessToken, templateId, version),
     goalTemplateDetailResponseSchema,
   );
 }

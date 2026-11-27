@@ -246,14 +246,15 @@ Unique: `(cycle_id, employee_id)`.
 
 ### 6.3 cycle_stages
 
-| Column         | Type        | Notes                               |
-| -------------- | ----------- | ----------------------------------- |
-| stage_id       | uuid PK     |                                     |
-| cycle_id       | uuid FK     |                                     |
-| perspective    | text        | self / manager / hr / peer / upward |
-| evaluator_role | text        |                                     |
-| sort_order     | integer     | Stage sequence, Rev-003             |
-| deadline       | timestamptz |                                     |
+| Column         | Type        | Notes                                                                        |
+| -------------- | ----------- | ---------------------------------------------------------------------------- |
+| stage_id       | uuid PK     |                                                                              |
+| cycle_id       | uuid FK     |                                                                              |
+| perspective    | text        | self / manager / hr / peer / upward                                          |
+| evaluator_role | text        |                                                                              |
+| evaluator_id   | uuid FK     | employees.guid. Named evaluator, NULL when launch derives it (self, manager) |
+| sort_order     | integer     | Stage sequence, Rev-003                                                      |
+| deadline       | timestamptz |                                                                              |
 
 ---
 

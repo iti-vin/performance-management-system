@@ -56,6 +56,13 @@ describe("GoalTemplateListing", () => {
     expect(row.getByText("Software Engineer")).toBeTruthy();
   });
 
+  it("lets a long column heading wrap, so it never covers the next one", () => {
+    renderListing();
+
+    // The columns have fixed widths, and the shared table header does not wrap by itself.
+    expect(screen.getByRole("table").closest("[class*='table-fixed']")?.className).toContain("[&_th]:whitespace-normal");
+  });
+
   it("falls back to the position title for an older template with no name", () => {
     render(
       <GoalTemplateListing
@@ -102,7 +109,7 @@ describe("GoalTemplateListing", () => {
   it("clears the search and the status together", async () => {
     renderListing({ status: "archived", q: "eng" });
 
-    await userEvent.setup().click(screen.getByRole("button", { name: "Clear filters" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Clear" }));
 
     await waitFor(() => expect(replace).toHaveBeenLastCalledWith(PATH, { scroll: false }));
   });
@@ -125,7 +132,7 @@ describe("GoalTemplateListing", () => {
     expect(screen.getByRole("combobox", { name: /status/i })).toBeTruthy();
   });
 
-  it("offers Draft and Published in the status filter, and no Archived", async () => {
+  it("offers every status in the filter, Archived included", async () => {
     renderListing();
 
     await userEvent.setup().click(screen.getByRole("combobox", { name: /status/i }));
@@ -136,6 +143,7 @@ describe("GoalTemplateListing", () => {
       "All statuses",
       "Draft",
       "Published",
+      "Archived",
     ]);
   });
 

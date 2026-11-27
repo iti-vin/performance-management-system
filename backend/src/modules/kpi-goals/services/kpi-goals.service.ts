@@ -15,6 +15,9 @@ import {
   weightsTotalHundred,
   type IndicatorMatrixInput,
 } from '@pms/shared-types';
+import type { TemplateVersionDto } from '@pms/shared-types';
+import { detailsOfVersion, publicationHistory } from './publication-history.js';
+import { writeAudit } from '../../../common/audit/write-audit.js';
 import { KpiGoalTemplate } from '../entities/kpi-goal-template.entity.js';
 import { KpiTemplateVersion } from '../entities/kpi-template-version.entity.js';
 import { KpiIndicator } from '../entities/kpi-indicator.entity.js';
@@ -74,12 +77,15 @@ function assertIndicatorMatrices(indicators: IndicatorDto[]): void {
   });
 }
 
-/** A published template needs indicators that total 100 percent (Tpl-G-003). */
-function assertPublishable(weights: number[]): void {
-  if (weights.length === 0) {
+/** A published template needs indicators with a unit and a target (Tpl-G-002) that total 100 percent (Tpl-G-003). */
+function assertPublishable(indicators: { weight: number; unit?: string | null; target?: number | null }[]): void {
+  if (indicators.length === 0) {
     throw new BadRequestException('Cannot publish template without indicators');
   }
-  if (!weightsTotalHundred(weights)) {
+  if (indicators.some(({ unit, target }) => !unit?.trim() || target === null || target === undefined)) {
+    throw new BadRequestException('Set a unit and a target for every indicator before you publish.');
+  }
+  if (!weightsTotalHundred(indicators.map(({ weight }) => Number(weight)))) {
     throw new BadRequestException(WEIGHTS_TOTAL_MESSAGE);
   }
 }
@@ -127,6 +133,32 @@ async function assertPositionInCompany(
     throw new BadRequestException('No employee of your company holds that position.');
   }
 }
+
+/** What an audit row keeps of a template. A frozen version keeps its own content. */
+const factsOf = ({ name, description, position, status, currentVersion }: KpiGoalTemplate) => ({
+  name,
+  description,
+  position,
+  status,
+  currentVersion,
+});
+
+/** One audit row of a change of a template (PRD 4.7). */
+const auditTemplate = (
+  manager: EntityManager,
+  action: string,
+  template: KpiGoalTemplate,
+  actorId: string | null,
+  beforeJson: Record<string, unknown> | null,
+) =>
+  writeAudit(manager, {
+    entityType: 'kpi_template',
+    entityId: template.templateId,
+    action,
+    actorId,
+    beforeJson,
+    afterJson: factsOf(template),
+  });
 
 @Injectable()
 export class KpiGoalsService {
@@ -179,20 +211,19 @@ export class KpiGoalsService {
     const versionId = randomUUID();
 
     await this.dataSource.transaction(async (manager) => {
-      await manager.save(
-        manager.create(KpiGoalTemplate, {
-          templateId,
-          position: dto.position ?? null,
-          company,
-          name: dto.name,
-          description: dto.description?.trim() || null,
-          status: 'draft',
-          currentVersion: 1,
-          publishedBy: null,
-          publishedAt: null,
-          archivedAt: null,
-        }),
-      );
+      const template = manager.create(KpiGoalTemplate, {
+        templateId,
+        position: dto.position ?? null,
+        company,
+        name: dto.name,
+        description: dto.description?.trim() || null,
+        status: 'draft',
+        currentVersion: 1,
+        publishedBy: null,
+        publishedAt: null,
+        archivedAt: null,
+      });
+      await manager.save(template);
       await manager.save(
         manager.create(KpiTemplateVersion, {
           versionId,
@@ -203,6 +234,7 @@ export class KpiGoalsService {
         }),
       );
       await this.saveIndicators(manager, dto.indicators, versionId);
+      await auditTemplate(manager, 'created', template, actorId, null);
     });
 
     return this.findTree(templateId);
@@ -211,17 +243,20 @@ export class KpiGoalsService {
   async update(
     templateId: string,
     dto: UpdateKpiGoalTemplateDto,
+    userId: string,
   ): Promise<TemplateTree> {
     assertIndicatorScores(dto.indicators);
     assertIndicatorMatrices(dto.indicators);
+    const { company, actorId } = await this.companies.resolveAccount(userId);
 
     await this.dataSource.transaction(async (manager) => {
-      const template = await this.findTemplate(templateId, manager);
+      const template = await this.lockTemplate(manager, templateId, company);
       if (template.status !== 'draft') {
         throw new ConflictException(
           'Only draft templates can be updated. Publish or archive first.',
         );
       }
+      const before = factsOf(template);
 
       const activeVersion = await this.findActiveDraftVersionIn(
         manager,
@@ -241,8 +276,11 @@ export class KpiGoalsService {
       template.description = dto.description?.trim() || null;
       await manager.save(template);
 
-      await this.clearContent(manager, activeVersion.versionId);
-      await this.saveIndicators(manager, dto.indicators, activeVersion.versionId);
+      const replaced = await manager.find(KpiIndicator, { where: { versionId: activeVersion.versionId } });
+      const replacedIds = replaced.map((indicator) => indicator.indicatorId);
+      await this.clearContent(manager, replacedIds);
+      await this.saveIndicators(manager, dto.indicators, activeVersion.versionId, replacedIds);
+      await auditTemplate(manager, 'updated', template, actorId, before);
     });
 
     return this.findTree(templateId);
@@ -261,15 +299,11 @@ export class KpiGoalsService {
   ): Promise<TemplateTree> {
     assertIndicatorScores(dto.indicators);
     assertIndicatorMatrices(dto.indicators);
-    assertPublishable(dto.indicators.map((indicator) => indicator.weight));
-    const { actorId } = await this.companies.resolveAccount(userId);
+    assertPublishable(dto.indicators);
+    const { company, actorId } = await this.companies.resolveAccount(userId);
 
     await this.dataSource.transaction(async (manager) => {
-      const template = await manager.findOne(KpiGoalTemplate, {
-        where: { templateId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!template) throw new NotFoundException('KPI goal template not found');
+      const template = await this.lockTemplate(manager, templateId, company);
       if (template.status !== 'published') {
         throw new ConflictException(
           'Only a published template gets a new version. Update a draft instead.',
@@ -284,6 +318,7 @@ export class KpiGoalsService {
         ? await manager.find(KpiIndicator, { where: { versionId: current.versionId } })
         : [];
       assertPublishedIndicatorsKeepUnitAndDirection(dto.indicators, previous);
+      const before = factsOf(template);
 
       if (dto.position !== undefined) {
         await assertPositionInCompany(manager, dto.position, template.company, template.position);
@@ -306,17 +341,18 @@ export class KpiGoalsService {
           createdBy: actorId,
         }),
       );
-      await this.saveIndicators(manager, dto.indicators, versionId, false);
+      await this.saveIndicators(manager, dto.indicators, versionId);
+      await auditTemplate(manager, 'version_published', template, actorId, before);
     });
 
     return this.findTree(templateId);
   }
 
   async publish(templateId: string, userId: string): Promise<TemplateTree> {
-    const { actorId } = await this.companies.resolveAccount(userId);
+    const { company, actorId } = await this.companies.resolveAccount(userId);
 
     await this.dataSource.transaction(async (manager) => {
-      const template = await this.findTemplate(templateId, manager);
+      const template = await this.lockTemplate(manager, templateId, company);
       if (template.status !== 'draft') {
         throw new ConflictException(
           'Only draft templates can be published. The template is already ' +
@@ -332,46 +368,57 @@ export class KpiGoalsService {
       const indicators = await manager.find(KpiIndicator, {
         where: { versionId: activeVersion.versionId },
       });
-      assertPublishable(indicators.map((indicator) => Number(indicator.weight)));
+      assertPublishable(indicators);
 
       activeVersion.frozenAt = new Date();
       await manager.save(activeVersion);
 
+      const before = factsOf(template);
       template.status = 'published';
       template.publishedBy = actorId;
       template.publishedAt = new Date();
       await manager.save(template);
+      await auditTemplate(manager, 'published', template, actorId, before);
     });
 
     return this.findTree(templateId);
   }
 
-  async archive(templateId: string): Promise<TemplateTree> {
-    const template = await this.findTemplate(templateId);
-    if (template.status !== 'draft' && template.status !== 'published') {
-      throw new ConflictException(
-        'Only draft or published templates can be archived. The template is already ' +
-          template.status + '.',
-      );
-    }
+  async archive(templateId: string, userId: string): Promise<TemplateTree> {
+    const { company, actorId } = await this.companies.resolveAccount(userId);
 
-    template.status = 'archived';
-    template.archivedAt = new Date();
-    await this.templates.save(template);
+    await this.dataSource.transaction(async (manager) => {
+      const template = await this.lockTemplate(manager, templateId, company);
+      if (template.status !== 'draft' && template.status !== 'published') {
+        throw new ConflictException(
+          'Only draft or published templates can be archived. The template is already ' +
+            template.status + '.',
+        );
+      }
+
+      const before = factsOf(template);
+      template.status = 'archived';
+      template.archivedAt = new Date();
+      await manager.save(template);
+      await auditTemplate(manager, 'archived', template, actorId, before);
+    });
 
     return this.findTree(templateId);
   }
 
-  async getById(templateId: string): Promise<TemplateTree> {
-    await this.findTemplate(templateId);
+  /** A template of another company answers like one that does not exist. */
+  async getById(templateId: string, userId: string): Promise<TemplateTree> {
+    const company = await this.companies.resolveCompany(userId);
+    await this.findTemplate(templateId, this.dataSource.manager, company);
     return this.findTree(templateId);
   }
 
   /**
-   * Every template with the indicator count of its latest
+   * Every template of the company of the account, with the indicator count of its latest
    * version (the same version `findTree` shows), in one query.
    */
-  async list() {
+  async list(userId: string) {
+    const company = await this.companies.resolveCompany(userId);
     const rows: Record<string, unknown>[] = await this.dataSource.manager.query(
       `SELECT t.template_id, t.position, t.company, t.name, t.description,
               t.status, t.current_version,
@@ -384,7 +431,9 @@ export class KpiGoalsService {
                                        ORDER BY v.version DESC
                                        LIMIT 1)) AS indicator_count
          FROM pms.kpi_goal_templates t
+        WHERE t.company = $1
         ORDER BY t.updated_at DESC`,
+      [company],
     );
     return rows.map((row) => ({
       templateId: row.template_id,
@@ -403,19 +452,53 @@ export class KpiGoalsService {
     }));
   }
 
+  /** The content of one published version, to read only (PRD 4.9). */
+  async getVersion(templateId: string, version: number, userId: string): Promise<TemplateTree> {
+    const company = await this.companies.resolveCompany(userId);
+    await this.findTemplate(templateId, this.dataSource.manager, company);
+    const found = await this.versions.findOne({ where: { templateId, version } });
+    if (!found?.frozenAt) throw new NotFoundException('Version not found');
+    const [tree, details] = await Promise.all([
+      this.findTree(templateId, found),
+      detailsOfVersion(this.dataSource.manager, { entityType: 'kpi_template', templateId, version, keys: ['name', 'description', 'position'] }),
+    ]);
+    return { ...tree, template: { ...tree.template, ...details } };
+  }
+
+  async listVersions(templateId: string, userId: string): Promise<TemplateVersionDto[]> {
+    const company = await this.companies.resolveCompany(userId);
+    const template = await this.findTemplate(templateId, this.dataSource.manager, company);
+    const versions = await this.versions.find({ where: { templateId } });
+    return publicationHistory(this.dataSource.manager, { entityType: 'kpi_template', company, template, versions });
+  }
+
   // ---- private helpers ------------------------------------------------
 
-  /** Pass the transaction manager inside a transaction, so the read joins it. */
+  /**
+   * Pass the transaction manager inside a transaction, so the read joins it. A caller that
+   * acts for an account passes its company: the read of a tree comes after that check.
+   */
   private async findTemplate(
     templateId: string,
     manager: EntityManager = this.dataSource.manager,
+    company?: string,
   ) {
     const template = await manager.findOne(KpiGoalTemplate, {
-      where: { templateId },
+      where: company === undefined ? { templateId } : { templateId, company },
     });
     if (!template) {
       throw new NotFoundException('KPI goal template not found');
     }
+    return template;
+  }
+
+  /** Reads the template row of the company with a write lock, so two writers wait for each other. */
+  private async lockTemplate(manager: EntityManager, templateId: string, company: string) {
+    const template = await manager.findOne(KpiGoalTemplate, {
+      where: { templateId, company },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!template) throw new NotFoundException('KPI goal template not found');
     return template;
   }
 
@@ -432,12 +515,15 @@ export class KpiGoalsService {
     return version;
   }
 
-  private async findTree(templateId: string): Promise<TemplateTree> {
+  /** The template with the content of one version: the latest, unless the caller names one. */
+  private async findTree(templateId: string, shown?: KpiTemplateVersion): Promise<TemplateTree> {
     const template = await this.findTemplate(templateId);
-    const version = await this.versions.findOne({
-      where: { templateId },
-      order: { version: 'DESC' },
-    });
+    const version =
+      shown ??
+      (await this.versions.findOne({
+        where: { templateId },
+        order: { version: 'DESC' },
+      }));
     const indicators = version
       ? await this.indicators.find({
           where: { versionId: version.versionId },
@@ -487,11 +573,15 @@ export class KpiGoalsService {
     manager: EntityManager,
     indicatorDtos: IndicatorDto[],
     versionId: string,
-    keepIds = true,
+    replacedIds: readonly string[] = [],
   ): Promise<void> {
+    // An id of the request stays only when it names an indicator of the draft that this save
+    // replaces, and only once. Any other id may belong to a row of another version, which a
+    // save would move and overwrite (CWE-639, Tpl-G-006).
+    const unused = new Set(replacedIds);
     for (const indicatorDto of indicatorDtos) {
-      // A new version never reuses an id: the rows of the old version still own it.
-      const indicatorId = (keepIds ? indicatorDto.indicatorId : undefined) ?? randomUUID();
+      const asked = indicatorDto.indicatorId;
+      const indicatorId = asked && unused.delete(asked) ? asked : randomUUID();
 
       await manager.save(
         manager.create(KpiIndicator, {
@@ -572,17 +662,8 @@ export class KpiGoalsService {
     await manager.save(cells);
   }
 
-  private async clearContent(
-    manager: EntityManager,
-    versionId: string,
-  ): Promise<void> {
-    const indicatorEntities = await manager.find(KpiIndicator, {
-      where: { versionId },
-    });
-    if (!indicatorEntities.length) {
-      return;
-    }
-    const indicatorIds = indicatorEntities.map((i) => i.indicatorId);
+  private async clearContent(manager: EntityManager, indicatorIds: string[]): Promise<void> {
+    if (!indicatorIds.length) return;
 
     // A cell belongs to a row and a column, so the cells go first.
     await manager.query(

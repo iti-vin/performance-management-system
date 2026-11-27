@@ -1,9 +1,10 @@
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AppModule, ObserveInstrument } from "./app.module.js";
-import { ApiExceptionFilter, validationException } from "./common/filters/api-exception.filter.js";
+import { ApiExceptionFilter } from "./common/filters/api-exception.filter.js";
+import { globalPipes } from "./common/pipes/global-pipes.js";
+import { globalInterceptors } from "./common/rate-limit/global-interceptors.js";
 import type { Env } from "./config/env.config.js";
 
 async function bootstrap() {
@@ -11,14 +12,8 @@ async function bootstrap() {
     instrument: ObserveInstrument,
   });
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-      exceptionFactory: validationException,
-    }),
-  );
+  app.useGlobalPipes(...globalPipes());
+  app.useGlobalInterceptors(...globalInterceptors());
   // Every failed request leaves as the error envelope of @pms/shared-types.
   app.useGlobalFilters(new ApiExceptionFilter());
 

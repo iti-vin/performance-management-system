@@ -3,9 +3,9 @@
 import { useId, useState } from "react";
 
 import { ListingPagination } from "@/components/molecules/listing-pagination";
+import { PersonCell } from "@/components/molecules/person-cell";
 import { ListingToolbar } from "@/components/molecules/listing-toolbar";
 import { DataTable } from "@/components/organisms/data-table";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
@@ -14,31 +14,24 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import type { Employee } from "@/types/employee";
+} from "@/components/ui/select";  
+import type { ReviewCycleOptionsDto } from "@pms/shared-types";
 
-const PAGE_SIZES = [10, 25, 50] as const;
+const PAGE_SIZES = [10, 20, 50] as const;
 
-/** `manager` is the manager's display name. */
-interface Participant
-  extends Pick<Employee, "id" | "name" | "department" | "position"> {
-  manager: string;
-}
+type Participant = ReviewCycleOptionsDto["employees"][number];
 
 interface ParticipantSelectionProps {
+  /** The employees that the API offers: active, in the company, with a GUID. */
   employees: readonly Participant[];
   selectedIds: readonly string[];
   onSelectionChange: (ids: string[]) => void;
-  onBack: () => void;
-  onContinue: () => void;
 }
 
 export function ParticipantSelection({
   employees,
   selectedIds,
   onSelectionChange,
-  onBack,
-  onContinue,
 }: ParticipantSelectionProps) {
   const headingId = useId();
   const [search, setSearch] = useState("");
@@ -52,13 +45,7 @@ export function ParticipantSelection({
     (employee) =>
       (department === null || employee.department === department) &&
       (position === null || employee.position === position) &&
-      [
-        employee.name,
-        employee.id,
-        employee.department,
-        employee.position,
-        employee.manager,
-      ]
+      [employee.name, employee.department, employee.position ?? ""]
         .join(" ")
         .toLowerCase()
         .includes(query),
@@ -75,16 +62,16 @@ export function ParticipantSelection({
     <section aria-labelledby={headingId} className="grid min-w-0 gap-4">
       <div className="grid gap-2">
         <h2 id={headingId} className="text-pms-section-title">
-          Select employees
+          Select Employees
         </h2>
         <p className="max-w-pms-copy text-pms-body text-muted-foreground">
-          Choose at least one employee. Selections stay in place as you filter
-          or change pages.
+          Select existing HRDotNet employees. Selection persists across filters and pages.
         </p>
       </div>
 
       <ListingToolbar
-        searchLabel="Search employees"
+        searchLabel="Search Employees"
+        searchPlaceholder="Search employees..."
         searchValue={search}
         onSearchChange={(value) => {
           setSearch(value);
@@ -111,7 +98,7 @@ export function ParticipantSelection({
               const filterId = `${headingId}-${field}`;
               const options = [
                 ...new Set(
-                  employees.map((employee) => employee[field]).filter(Boolean),
+                  employees.flatMap((employee) => employee[field] ?? []),
                 ),
               ].sort();
               const allLabel =
@@ -172,7 +159,7 @@ export function ParticipantSelection({
 
       <DataTable
         caption="Employees eligible for this review cycle"
-        getRowId={(employee) => employee.id}
+        getRowId={(employee) => employee.employeeId}
         rows={filteredEmployees.slice(firstRow, firstRow + pageSize)}
         emptyMessage={
           employees.length === 0
@@ -186,14 +173,14 @@ export function ParticipantSelection({
             renderCell: (employee) => (
               <div className="grid size-pms-touch place-items-center">
                 <Checkbox
-                  aria-label={`Select ${employee.name} (${employee.id})`}
-                  checked={selected.has(employee.id)}
+                  aria-label={`Select ${employee.name}`}
+                  checked={selected.has(employee.employeeId)}
                   className="after:inset-auto after:size-pms-touch"
                   onCheckedChange={(checked) =>
                     onSelectionChange(
                       checked
-                        ? [...selected, employee.id]
-                        : selectedIds.filter((id) => id !== employee.id),
+                        ? [...selected, employee.employeeId]
+                        : selectedIds.filter((id) => id !== employee.employeeId),
                     )
                   }
                 />
@@ -203,12 +190,12 @@ export function ParticipantSelection({
           {
             id: "name",
             heading: "Employee",
-            renderCell: (employee) => employee.name,
+            renderCell: (employee) => <PersonCell name={employee.name} subtitle={employee.position ?? undefined} />,
           },
           {
-            id: "id",
+            id: "code",
             heading: "Employee ID",
-            renderCell: (employee) => employee.id,
+            renderCell: (employee) => employee.employeeCode,
           },
           {
             id: "department",
@@ -218,12 +205,12 @@ export function ParticipantSelection({
           {
             id: "position",
             heading: "Position",
-            renderCell: (employee) => employee.position,
+            renderCell: (employee) => employee.position ?? "No position",
           },
           {
             id: "manager",
             heading: "Manager",
-            renderCell: (employee) => employee.manager,
+            renderCell: (employee) => employee.managerName ?? "Not set",
           },
         ]}
       />
@@ -242,24 +229,6 @@ export function ParticipantSelection({
         />
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-pms-touch rounded-pms-control"
-          onClick={onBack}
-        >
-          Back
-        </Button>
-        <Button
-          type="button"
-          className="min-h-pms-touch rounded-pms-control"
-          disabled={selected.size === 0}
-          onClick={onContinue}
-        >
-          Continue
-        </Button>
-      </div>
     </section>
   );
 }

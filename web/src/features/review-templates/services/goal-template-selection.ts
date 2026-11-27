@@ -7,7 +7,7 @@ export type TemplateTab = (typeof TEMPLATE_TABS)[number];
 export const TEMPLATE_STATUS_FILTERS = ["all", ...TEMPLATE_VERSION_STATUSES] as const;
 export type TemplateStatusFilter = (typeof TEMPLATE_STATUS_FILTERS)[number];
 
-export const TEMPLATE_PAGE_SIZES = [10, 25, 50] as const;
+export const TEMPLATE_PAGE_SIZES = [10, 20, 50] as const;
 const MAX_QUERY_LENGTH = 100;
 
 export interface GoalTemplateListParams {

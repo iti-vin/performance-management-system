@@ -12,6 +12,7 @@ import { AuthService } from "../services/auth.service.js";
 import { LoginDto } from "../dtos/login.dto.js";
 import { RefreshTokenDto } from "../dtos/refresh-token.dto.js";
 import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard.js";
+import { RateLimit } from "../../../common/rate-limit/rate-limit.decorator.js";
 import { CurrentUserResponseDto } from "../dtos/current-user-response.dto.js";
 import { TokenResponseDto } from "../dtos/token-response.dto.js";
 import { ApiErrorResponseDto } from "../../../common/dtos/api-response.dto.js";
@@ -24,6 +25,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post("login")
+  @RateLimit("login")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "authenticate with email or username and password" })
   @ApiOkResponse({ description: "Success", type: TokenResponseDto })
@@ -41,6 +43,7 @@ export class AuthController {
   }
 
   @Post("refresh-token")
+  @RateLimit("refresh")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "submit a valid access token to get a new one with longer expiry" })
   @ApiOkResponse({ description: "Success", type: TokenResponseDto })
@@ -51,6 +54,7 @@ export class AuthController {
   }
 
   @Get("me")
+  @RateLimit("session")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Get the current authenticated user" })

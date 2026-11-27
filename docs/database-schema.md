@@ -126,7 +126,7 @@ Unique key: `(cycle_id, employee_id)`.
 
 ### 7.3 `cycle_stages`
 
-`stage_id` UUID PK; `cycle_id` FK; `perspective` (`self`, `manager`, `hr`, `peer`, `upward`); `evaluator_role`; `sort_order`; `deadline`.
+`stage_id` UUID PK; `cycle_id` FK; `perspective` (`self`, `manager`, `hr`, `peer`, `upward`); `evaluator_role`; `evaluator_id` nullable FK to `employees.guid` (the named evaluator; launch derives it when it is empty for the self and manager stages); `sort_order`; `deadline`.
 
 Cycle activation creates participant and assignment records transactionally and idempotently. Template and position mappings are frozen at scheduling or launch as required by the PRD.
 

@@ -4,6 +4,8 @@ import {
   behavioralTemplateListResponseSchema,
   behavioralTemplateTreeResponseSchema,
   idSchema,
+  templateVersionListResponseSchema,
+  type TemplateVersionDto,
   type BehavioralTemplateListResponseDto,
   type BehavioralTemplateTreeResponseDto,
 } from "@pms/shared-types";
@@ -13,6 +15,7 @@ import type { ZodType } from "zod";
 import { SESSION_COOKIE } from "@/features/auth/services/session-cookie";
 import {
   fetchBehavioralTemplate,
+  fetchBehavioralTemplateVersions,
   fetchBehavioralTemplates,
 } from "@/features/review-templates/api/behavioral-template-requests";
 
@@ -57,13 +60,20 @@ export function getBehavioralTemplates(): Promise<
   return readTemplates(fetchBehavioralTemplates, behavioralTemplateListResponseSchema);
 }
 
+export async function getBehavioralTemplateVersions(templateId: string): Promise<BehavioralTemplateReadResult<TemplateVersionDto[]>> {
+  if (!idSchema.safeParse(templateId).success) return { kind: "not_found" };
+
+  return readTemplates((accessToken) => fetchBehavioralTemplateVersions(accessToken, templateId), templateVersionListResponseSchema);
+}
+
 export async function getBehavioralTemplate(
   templateId: string,
+  version?: number,
 ): Promise<BehavioralTemplateReadResult<BehavioralTemplateTreeResponseDto>> {
   if (!idSchema.safeParse(templateId).success) return { kind: "not_found" };
 
   return readTemplates(
-    (accessToken) => fetchBehavioralTemplate(accessToken, templateId),
+    (accessToken) => fetchBehavioralTemplate(accessToken, templateId, version),
     behavioralTemplateTreeResponseSchema,
   );
 }

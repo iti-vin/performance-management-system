@@ -30,6 +30,7 @@ vi.mock("@/features/review-templates/api/goal-template-requests", () => ({
 }));
 
 import {
+  archiveGoalTemplate,
   publishGoalTemplate,
   saveGoalTemplateEdits,
 } from "@/features/review-templates/services/manage-goal-template";
@@ -149,5 +150,26 @@ describe("publishGoalTemplate", () => {
   it("refuses an id that is not a template id", async () => {
     expect(await publishGoalTemplate("../x")).toHaveProperty("message");
     expect(api.postPublishGoalTemplate).not.toHaveBeenCalled();
+  });
+});
+
+describe("archiveGoalTemplate", () => {
+  beforeEach(() => {
+    cookieGet.mockReturnValue({ value: "token" });
+    api.postArchiveGoalTemplate.mockReset().mockResolvedValue(OK);
+  });
+
+  it("archives the template, then goes to the list", async () => {
+    expect(await redirectOf(() => archiveGoalTemplate(ID))).toBe(`${LIST}?saved=archived`);
+    expect(api.postArchiveGoalTemplate).toHaveBeenCalledWith("token", ID);
+  });
+
+  it("returns a message when the archive is refused, and refuses a bad id without a request", async () => {
+    api.postArchiveGoalTemplate.mockResolvedValue({ status: 409, data: {} });
+    expect(await archiveGoalTemplate(ID)).toHaveProperty("message");
+    api.postArchiveGoalTemplate.mockClear();
+
+    expect(await archiveGoalTemplate("../x")).toHaveProperty("message");
+    expect(api.postArchiveGoalTemplate).not.toHaveBeenCalled();
   });
 });

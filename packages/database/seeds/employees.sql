@@ -50,7 +50,7 @@ VALUES
    NULL, NULL, NULL, NULL, NULL,
    now(), now()),
   ('08bd7bb2-faa4-46ae-b7c1-cc20664d7331', 27, 'ITI-003', 'iging@userdotnet.com', 'Iging', 'UserDotTech', 3,
-   'Mayon Consolidated Inc.', NULL, NULL, 'Engineering', 'Main', 'regular', 'active',
+   'Mayon Consolidated Inc.', 'Software Engineer', NULL, 'Engineering', 'Main', 'regular', 'active',
    NULL, NULL, NULL, NULL, NULL, NULL,
    NULL, NULL, NULL, NULL, NULL,
    now(), now())

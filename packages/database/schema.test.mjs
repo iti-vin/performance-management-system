@@ -304,3 +304,162 @@ test("the behavioral template details migration only adds columns and checks", (
     assert.ok(sql.includes(list), "the migration lacks " + list);
   }
 });
+
+test("a cycle stage names its evaluator person, and the migration only adds the column", () => {
+  const schema = readSchema();
+  const stages = schema.match(
+    /CREATE TABLE IF NOT EXISTS pms\.cycle_stages \(([\s\S]*?)\n\);/,
+  );
+  assert.ok(stages, "schema.sql lacks pms.cycle_stages");
+  assert.match(
+    stages[1],
+    /evaluator_id\s+uuid REFERENCES pms\.employees\(guid\)/,
+  );
+
+  const migration = readFileSync(
+    new URL("./migrations/2026-11-25-cycle-stage-evaluator.sql", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(migration, /DROP\s+(COLUMN|TABLE)/i);
+  assert.doesNotMatch(migration, /\bpublic\./i);
+  assert.match(
+    migration,
+    /ADD COLUMN IF NOT EXISTS evaluator_id uuid REFERENCES pms\.employees\(guid\)/,
+  );
+
+  // The HR stage of the dev cycle names the HR officer. Self and manager stages derive their evaluator, so they stay NULL.
+  const seed = readFileSync(
+    new URL("./seeds/review-cycles.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(seed, /INSERT INTO pms\.cycle_stages \([^)]*evaluator_id/);
+  const hrStage = seed.match(/0{9}163'[\s\S]*?ON CONFLICT/);
+  assert.ok(hrStage, "the seed lacks the HR stage");
+  assert.ok(
+    hrStage[0].includes("'00000000-0000-0000-0000-000000000023'"),
+    "the HR stage names no evaluator",
+  );
+});
+
+test("the test accounts can take part in a review: the user holds a position with a KPI template and has the manager as manager", () => {
+  const user = "08bd7bb2-faa4-46ae-b7c1-cc20664d7331";
+  const manager = "ce58dfdf-e0bf-47d8-9060-3dc10d732d07";
+  const seed = readSeed();
+  assert.match(
+    seed,
+    /'08bd7bb2-faa4-46ae-b7c1-cc20664d7331', 27, 'ITI-003', 'iging@userdotnet\.com', 'Iging', 'UserDotTech', 3,\s*'Mayon Consolidated Inc\.', 'Software Engineer',/,
+  );
+  assert.match(
+    seed,
+    /'08bd7bb2-faa4-46ae-b7c1-cc20664d7331',\s*'ce58dfdf-e0bf-47d8-9060-3dc10d732d07',\s*'Mayon Consolidated Inc\.',\s*'2026-11-26', 'applied'/,
+  );
+
+  const script = readFileSync(
+    new URL("./migrations/2026-11-26-test-account-review-links.sql", import.meta.url),
+    "utf8",
+  );
+  const statements = script.replace(/^\s*--.*$/gm, "");
+  assert.match(statements, /^BEGIN;[\s\S]*^COMMIT;/m);
+  // It fills what is empty and replaces nothing.
+  assert.doesNotMatch(statements, /\b(DELETE|DROP|TRUNCATE|ALTER)\b/i);
+  assert.doesNotMatch(statements, /\bpublic\./i);
+  assert.equal(statements.match(/\bUPDATE\b/gi)?.length, 1);
+  assert.match(statements, /SET position = 'Software Engineer'[\s\S]*?position IS NULL;/);
+  assert.match(
+    statements,
+    /INSERT INTO pms\.manager_assignments[\s\S]*?NOT EXISTS[\s\S]*?status = 'applied'[\s\S]*?ON CONFLICT \(assignment_id\) DO NOTHING;/,
+  );
+  assert.ok(statements.includes(user) && statements.includes(manager), "the script names other accounts than the seeds");
+});
+
+test("an active cycle that was launched before work records existed gets one draft record per participant", () => {
+  const script = readFileSync(
+    new URL("./migrations/2026-11-26-accomplishment-rows-for-active-cycles.sql", import.meta.url),
+    "utf8",
+  );
+  const statements = script.replace(/^\s*--.*$/gm, "");
+  assert.match(statements, /^BEGIN;[\s\S]*^COMMIT;/m);
+  assert.doesNotMatch(statements, /\b(UPDATE|DELETE|DROP|TRUNCATE|ALTER)\b/i);
+  assert.doesNotMatch(statements, /\bpublic\./i);
+  assert.match(statements, /INSERT INTO pms\.accomplishments[\s\S]*?'draft'[\s\S]*?FROM pms\.cycle_participants/);
+  // Only an active cycle where goals count, and only a participant with a frozen KPI version.
+  assert.match(statements, /WHERE c\.state = 'active'\s+AND c\.goals_weight > 0\s+AND p\.kpi_version_id IS NOT NULL/);
+  // It replaces nothing, and a second run adds nothing.
+  assert.match(statements, /AND NOT EXISTS \(\s*SELECT 1 FROM pms\.accomplishments[\s\S]*?participant_id = p\.participant_id\s*\)/);
+  assert.match(statements, /ON CONFLICT \(participant_id\) DO NOTHING;/);
+});
+
+test("every indicator that a seeded submission names is a whole GUID", () => {
+  const seed = readFileSync(new URL("./seeds/kpi-accomplishments.sql", import.meta.url), "utf8");
+  const named = [...seed.matchAll(/'indicator_id', '([^']+)'/g)].map((match) => match[1]);
+  assert.ok(named.length >= 2, "the seed names no indicator");
+  for (const id of named) {
+    assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  }
+});
+
+const SLICE_5 = [
+  ["cycles", "description", "text", "review-cycles"],
+  ["cycles", "accomplishment_deadline", "timestamptz", "review-cycles"],
+  ["accomplishment_actuals", "remarks", "text", "kpi-accomplishments"],
+];
+
+test("a cycle has a description and an accomplishment deadline, and each actual result has remarks", () => {
+  const script = readFileSync(new URL("./migrations/2026-11-26-slice-5-cycle-and-accomplishment-fields.sql", import.meta.url), "utf8");
+  const statements = script.replace(/^\s*--.*$/gm, "");
+  assert.match(statements, /^BEGIN;[\s\S]*^COMMIT;/m);
+  // It only adds nullable columns: no data changes, and an old backend keeps working.
+  assert.doesNotMatch(statements, /\b(UPDATE|DELETE|DROP|TRUNCATE|INSERT|NOT NULL)\b/i);
+  assert.doesNotMatch(statements, /\bpublic\./i);
+  for (const [table, column, type, file] of SLICE_5) {
+    assert.match(statements, new RegExp(`ALTER TABLE pms\\.${table}[^;]*ADD COLUMN IF NOT EXISTS ${column}\\s+${type}\\b`), column);
+    const schema = readFileSync(new URL(`./schema/${file}.sql`, import.meta.url), "utf8");
+    const created = new RegExp(`CREATE TABLE IF NOT EXISTS pms\\.${table} \\(([\\s\\S]*?)\\n\\);`).exec(schema)?.[1] ?? "";
+    assert.match(created, new RegExp(`^\\s*${column}\\s+${type}\\b`, "m"), `${table}.${column} in the schema file`);
+  }
+});
+
+test("the peers that HR names have their own table, which a replaced draft clears", () => {
+  const script = readFileSync(new URL("./migrations/2026-11-26-phase-7-peer-evaluators.sql", import.meta.url), "utf8");
+  const schema = readFileSync(new URL("./schema/review-cycles.sql", import.meta.url), "utf8");
+  const statements = script.replace(/^\s*--.*$/gm, "");
+  assert.match(statements, /^BEGIN;[\s\S]*^COMMIT;/m);
+  // It only creates: no data changes, and an old backend keeps working.
+  assert.doesNotMatch(statements, /\b(UPDATE|DROP|TRUNCATE|INSERT|ALTER)\b|DELETE FROM/i);
+  assert.doesNotMatch(statements, /\bpublic\./i);
+  for (const [where, sql] of [["the migration", statements], ["the schema file", schema]]) {
+    const table = /CREATE TABLE IF NOT EXISTS pms\.cycle_peer_evaluators \(([\s\S]*?)\n\);/.exec(sql)?.[1] ?? "";
+    assert.match(table, /participant_id\s+uuid NOT NULL REFERENCES pms\.cycle_participants\(participant_id\) ON DELETE CASCADE/, where);
+    assert.match(table, /evaluator_id\s+uuid NOT NULL REFERENCES pms\.employees\(guid\)/, where);
+    assert.match(table, /PRIMARY KEY \(participant_id, evaluator_id\)/, where);
+    assert.match(sql, /CREATE INDEX IF NOT EXISTS cycle_peer_evaluators_evaluator_idx\s+ON pms\.cycle_peer_evaluators \(evaluator_id\);/, where);
+  }
+});
+
+test("result visibility has its own table, so only release and results wait for the script", () => {
+  const script = readFileSync(new URL("./migrations/2026-11-27-result-visibility.sql", import.meta.url), "utf8");
+  const schema = readFileSync(new URL("./schema/evaluation-results.sql", import.meta.url), "utf8");
+  const statements = script.replace(/^\s*--.*$/gm, "");
+  assert.match(statements, /^BEGIN;[\s\S]*^COMMIT;/m);
+  assert.doesNotMatch(statements, /\b(UPDATE|DROP|TRUNCATE|INSERT|ALTER)\b|DELETE FROM/i);
+  assert.doesNotMatch(statements, /\bpublic\./i);
+  for (const [where, sql] of [["the migration", statements], ["the schema file", schema]]) {
+    const table = /CREATE TABLE IF NOT EXISTS pms\.cycle_result_visibility \(([\s\S]*?)\n\);/.exec(sql)?.[1] ?? "";
+    assert.match(table, /cycle_id\s+uuid PRIMARY KEY REFERENCES pms\.cycles\(cycle_id\) ON DELETE CASCADE/, where);
+    assert.match(table, /employee_visible\s+boolean NOT NULL DEFAULT true/, where);
+    assert.match(table, /manager_visible\s+boolean NOT NULL DEFAULT true/, where);
+  }
+});
+
+test("a cycle says whether a later reviewer reads earlier answers, and an old cycle says no (D5)", () => {
+  const script = readFileSync(new URL("./migrations/2026-11-27-earlier-answers-visibility.sql", import.meta.url), "utf8");
+  const schema = readFileSync(new URL("./schema/evaluation-results.sql", import.meta.url), "utf8");
+  const statements = script.replace(/^\s*--.*$/gm, "");
+  assert.match(statements, /^BEGIN;[\s\S]*^COMMIT;/m);
+  // It adds one column: no row changes, and an old backend keeps working because of the default.
+  assert.doesNotMatch(statements, /\b(UPDATE|DROP|TRUNCATE|INSERT)\b|DELETE FROM/i);
+  assert.doesNotMatch(statements, /\bpublic\./i);
+  assert.match(statements, /ALTER TABLE pms\.cycle_result_visibility\s+ADD COLUMN IF NOT EXISTS earlier_answers_visible boolean NOT NULL DEFAULT false;/);
+  const table = /CREATE TABLE IF NOT EXISTS pms\.cycle_result_visibility \(([\s\S]*?)\n\);/.exec(schema)?.[1] ?? "";
+  assert.match(table, /earlier_answers_visible\s+boolean NOT NULL DEFAULT false/, "the schema file");
+});

@@ -12,10 +12,8 @@ import {
   TEMPLATE_VERSION_STATUS_LABELS,
   TEMPLATE_VERSION_STATUS_TONES,
 } from "@/constants/domain-labels";
-import {
-  formatPosition,
-  formatTemplateDate,
-} from "@/features/review-templates/services/goal-template-format";
+import { formatPosition } from "@/features/review-templates/services/goal-template-format";
+import { formatWorkspaceDate } from "@/utils/workspace-date";
 import { GOAL_TEMPLATE_PATH } from "@/constants/goal-template-path";
 
 type GoalTemplateRow = GoalTemplateListResponseDto[number];
@@ -23,13 +21,12 @@ type GoalTemplateRow = GoalTemplateListResponseDto[number];
 // Reserve space for the short metadata columns and let Position take the remainder.
 const TABLE_LAYOUT =
   "@container min-w-0 [&_table]:min-w-2xl [&_table]:table-fixed " +
-  "[&_thead]:bg-muted [&_thead_tr:hover]:bg-transparent " +
-  "[&_th]:px-4 [&_th]:text-pms-label [&_th]:text-muted-foreground " +
+  "[&_th]:px-4 [&_th]:whitespace-normal [&_th]:text-pms-label [&_th]:text-muted-foreground " +
   "[&_td]:px-4 [&_td]:py-3 [&_td]:whitespace-normal " +
-  "[&_th:nth-child(1)]:w-2/5 [&_th:nth-child(3)]:w-24 " +
+  "[&_th:nth-child(1)]:w-1/3 [&_th:nth-child(3)]:w-24 " +
   "[&_th:nth-child(4)]:w-24 [&_th:nth-child(5)]:w-32 " +
   "@4xl:[&_th:nth-child(3)]:w-1/8 @4xl:[&_th:nth-child(4)]:w-1/8 " +
-  "@4xl:[&_th:nth-child(5)]:w-1/6";
+  "@4xl:[&_th:nth-child(1)]:w-2/5 @4xl:[&_th:nth-child(5)]:w-1/6";
 
 export function GoalTemplateList({
   templates,
@@ -72,7 +69,7 @@ export function GoalTemplateList({
           {
             // An older template has no name: the position title names it.
             id: "name",
-            heading: "Template name",
+            heading: "Template Name",
             renderCell: (row) => (
               <Link
                 href={`${GOAL_TEMPLATE_PATH}/${row.templateId}`}
@@ -89,12 +86,18 @@ export function GoalTemplateList({
           },
           {
             id: "position",
-            heading: "Position",
+            heading: "Applicable Position / Role",
             renderCell: (row) => (
               <span className="wrap-anywhere">
                 {formatPosition(row.position)}
               </span>
             ),
+          },
+          {
+            id: "indicators",
+            heading: "Indicators",
+            align: "end",
+            renderCell: (row) => row.indicatorCount,
           },
           {
             id: "status",
@@ -107,18 +110,12 @@ export function GoalTemplateList({
             ),
           },
           {
-            id: "indicators",
-            heading: "Indicators",
-            align: "end",
-            renderCell: (row) => row.indicatorCount,
-          },
-          {
             id: "updated",
-            heading: "Last updated",
+            heading: "Last Updated",
             align: "end",
             renderCell: (row) => (
               <span className="text-muted-foreground">
-                {formatTemplateDate(row.updatedAt)}
+                {formatWorkspaceDate(row.updatedAt)}
               </span>
             ),
           },

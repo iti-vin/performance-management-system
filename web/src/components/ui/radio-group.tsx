@@ -34,4 +34,18 @@ function RadioGroupItem({ className, ...props }: RadioPrimitive.Root.Props) {
   )
 }
 
-export { RadioGroup, RadioGroupItem }
+/** A radio that is the whole button: its content is the choice. */
+function RadioGroupCard({ className, ...props }: RadioPrimitive.Root.Props) {
+  return (
+    <RadioPrimitive.Root
+      data-slot="radio-group-card"
+      className={cn(
+        "flex min-h-pms-touch cursor-pointer flex-col items-center justify-center gap-1 rounded-pms-control border border-input p-2 text-center outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive data-checked:border-primary data-checked:bg-primary/10 data-checked:ring-2 data-checked:ring-primary dark:bg-input/30",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { RadioGroup, RadioGroupCard, RadioGroupItem }

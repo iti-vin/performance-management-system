@@ -115,7 +115,7 @@ export function DataTable<Row>({
       aria-busy={isLoading || undefined}
     >
       <TableCaption className="sr-only">{caption}</TableCaption>
-      <TableHeader>
+      <TableHeader className="uppercase">
         <TableRow>
           {expansion && (
             <TableHead scope="col" className="w-10">

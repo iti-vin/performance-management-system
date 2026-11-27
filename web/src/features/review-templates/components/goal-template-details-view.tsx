@@ -15,12 +15,15 @@ import {
 } from "@/constants/domain-labels";
 import { KpiGoalTemplateEditor } from "@/features/review-templates/components/kpi-goal-template-editor";
 import { fromGoalTemplateDetail } from "@/features/review-templates/services/goal-template-editor-state";
+import { TemplateArchiveAction } from "@/features/review-templates/components/template-archive-action";
 import { PUBLISH_CONFIRMATION } from "@/features/review-templates/services/publish-confirmation";
-import { publishGoalTemplate } from "@/features/review-templates/services/manage-goal-template";
+import { archiveGoalTemplate, publishGoalTemplate } from "@/features/review-templates/services/manage-goal-template";
 
 interface GoalTemplateDetailsViewProps {
   detail: GoalTemplateDetailResponseDto;
   positions: readonly { value: string; label: string }[];
+  /** An older version that the page shows: it has no action. */
+  shownVersion?: number;
 }
 
 /**
@@ -28,7 +31,7 @@ interface GoalTemplateDetailsViewProps {
  * Publish Template. A published template offers Edit Template, and stays
  * editable. An archived one has no actions.
  */
-export function GoalTemplateDetailsView({ detail, positions }: GoalTemplateDetailsViewProps) {
+export function GoalTemplateDetailsView({ detail, positions, shownVersion }: GoalTemplateDetailsViewProps) {
   const [message, setMessage] = useState("");
   const [asking, setAsking] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -42,6 +45,16 @@ export function GoalTemplateDetailsView({ detail, positions }: GoalTemplateDetai
       setMessage((await publishGoalTemplate(templateId)).message);
     });
   }
+
+  function archive() {
+    setMessage("");
+    startTransition(async () => {
+      // A success redirects, so a result here is always a failure message.
+      setMessage((await archiveGoalTemplate(templateId)).message);
+    });
+  }
+
+  const archiveAction = <TemplateArchiveAction disabled={isPending} onConfirm={archive} />;
 
   return (
     <>
@@ -63,13 +76,14 @@ export function GoalTemplateDetailsView({ detail, positions }: GoalTemplateDetai
               tone={TEMPLATE_VERSION_STATUS_TONES[status]}
             />
             {currentVersion !== null && (
-              <span className="text-muted-foreground">Version {currentVersion}</span>
+              <span className="text-muted-foreground">Version {shownVersion ?? currentVersion}</span>
             )}
           </span>
         }
         headerActions={
-          status === "draft" ? (
+          shownVersion ? null : status === "draft" ? (
             <>
+              {archiveAction}
               <Link
                 href={editHref}
                 className={buttonVariants({ variant: "outline", className: "min-h-pms-touch" })}
@@ -86,9 +100,12 @@ export function GoalTemplateDetailsView({ detail, positions }: GoalTemplateDetai
               </Button>
             </>
           ) : status === "published" ? (
-            <Link href={editHref} className={buttonVariants({ className: "min-h-pms-touch" })}>
+            <>
+              {archiveAction}
+              <Link href={editHref} className={buttonVariants({ className: "min-h-pms-touch" })}>
               Edit Template
             </Link>
+            </>
           ) : null
         }
       />

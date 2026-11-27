@@ -15,8 +15,9 @@ import {
 } from "@/constants/domain-labels";
 import { BehavioralTemplateEditor } from "@/features/review-templates/components/behavioral-template-editor";
 import { fromBehavioralTemplateTree } from "@/features/review-templates/services/behavioral-template-editor-state";
+import { TemplateArchiveAction } from "@/features/review-templates/components/template-archive-action";
 import { PUBLISH_CONFIRMATION } from "@/features/review-templates/services/publish-confirmation";
-import { publishBehavioralTemplate } from "@/features/review-templates/services/manage-behavioral-template";
+import { archiveBehavioralTemplate, publishBehavioralTemplate } from "@/features/review-templates/services/manage-behavioral-template";
 
 /**
  * The details page: the form as text. A draft offers Edit Draft and Publish
@@ -24,7 +25,7 @@ import { publishBehavioralTemplate } from "@/features/review-templates/services/
  * next version, and the published version stays as it is. An archived one has
  * no action.
  */
-export function BehavioralTemplateDetailsView({ tree }: { tree: BehavioralTemplateTreeResponseDto }) {
+export function BehavioralTemplateDetailsView({ tree, shownVersion }: { tree: BehavioralTemplateTreeResponseDto; shownVersion?: number }) {
   const [message, setMessage] = useState("");
   const [asking, setAsking] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -37,6 +38,16 @@ export function BehavioralTemplateDetailsView({ tree }: { tree: BehavioralTempla
       setMessage((await publishBehavioralTemplate(templateId)).message);
     });
   }
+
+  function archive() {
+    setMessage("");
+    startTransition(async () => {
+      // A success redirects, so a result here is always a failure message.
+      setMessage((await archiveBehavioralTemplate(templateId)).message);
+    });
+  }
+
+  const archiveAction = <TemplateArchiveAction disabled={isPending} onConfirm={archive} />;
 
   return (
     <>
@@ -56,12 +67,13 @@ export function BehavioralTemplateDetailsView({ tree }: { tree: BehavioralTempla
               label={TEMPLATE_VERSION_STATUS_LABELS[status]}
               tone={TEMPLATE_VERSION_STATUS_TONES[status]}
             />
-            <span className="text-muted-foreground">Version {currentVersion}</span>
+            <span className="text-muted-foreground">Version {shownVersion ?? currentVersion}</span>
           </span>
         }
         headerActions={
-          status === "draft" ? (
+          shownVersion ? null : status === "draft" ? (
             <>
+              {archiveAction}
               <Link
                 href={`${BEHAVIORAL_TEMPLATE_PATH}/${templateId}/edit`}
                 className={buttonVariants({ variant: "outline", className: "min-h-pms-touch" })}
@@ -73,12 +85,15 @@ export function BehavioralTemplateDetailsView({ tree }: { tree: BehavioralTempla
               </Button>
             </>
           ) : status === "published" ? (
-            <Link
+            <>
+              {archiveAction}
+              <Link
               href={`${BEHAVIORAL_TEMPLATE_PATH}/${templateId}/edit`}
               className={buttonVariants({ className: "min-h-pms-touch" })}
             >
               Edit Template
             </Link>
+            </>
           ) : null
         }
       />

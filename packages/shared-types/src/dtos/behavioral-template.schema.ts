@@ -97,9 +97,11 @@ export type SaveBehavioralTemplateRequestDto = z.infer<
   typeof saveBehavioralTemplateRequestSchema
 >;
 
-/** GET behavioral-assessment: every template row. The API sends no name or counts. */
+/** GET behavioral-assessment: every template row, with the number of questions of its current version. */
 export const behavioralTemplateListResponseSchema = z.array(
-  behavioralTemplateDtoSchema,
+  behavioralTemplateDtoSchema.extend({
+    questionCount: z.number().int().min(0),
+  }),
 );
 export type BehavioralTemplateListResponseDto = z.infer<
   typeof behavioralTemplateListResponseSchema

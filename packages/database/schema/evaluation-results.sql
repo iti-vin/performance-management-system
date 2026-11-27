@@ -23,3 +23,13 @@ CREATE TABLE IF NOT EXISTS pms.evaluation_snapshots (
 -- The unique key above covers cycle lookups. Index the other foreign key for participant lookups.
 CREATE INDEX IF NOT EXISTS evaluation_snapshots_participant_idx
     ON pms.evaluation_snapshots (participant_id);
+
+-- Who reads the released results of a cycle, beside HR (PRD Cyc-001). A cycle with no row is
+-- read by the employee and the manager. earlier_answers_visible: the reviewer of a later stage
+-- reads the submitted answers of an earlier one (D5). Off unless the cycle chose it.
+CREATE TABLE IF NOT EXISTS pms.cycle_result_visibility (
+    cycle_id         uuid PRIMARY KEY REFERENCES pms.cycles(cycle_id) ON DELETE CASCADE,
+    employee_visible boolean NOT NULL DEFAULT true,
+    manager_visible  boolean NOT NULL DEFAULT true,
+    earlier_answers_visible boolean NOT NULL DEFAULT false
+);

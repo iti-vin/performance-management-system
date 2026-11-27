@@ -3,6 +3,7 @@ import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { describe, expect, it } from "vitest";
 import { CreateKpiGoalTemplateDto } from "./create-kpi-goal-template.dto.js";
+import { IndicatorDto } from "./kpi-indicator.dto.js";
 import { UpdateKpiGoalTemplateDto } from "./update-kpi-goal-template.dto.js";
 
 // Validate the way main.ts does, so a key the DTO lacks fails here too.
@@ -185,5 +186,13 @@ describe("KPI goal template request contract", () => {
     const body = { name: NAME, position, indicators: [indicator] };
 
     expect(await errorsOf(CreateKpiGoalTemplateDto, body)).toContain("position");
+  });
+});
+
+describe("IndicatorDto text", () => {
+  it("refuses a name with spaces only", async () => {
+    const errors = await validate(plainToInstance(IndicatorDto, { name: "   ", direction: "higher_is_better", weight: 100, scoreTargetMet: 5, scoreBelowTarget: 1 }));
+
+    expect(errors.map((error) => error.property)).toEqual(["name"]);
   });
 });

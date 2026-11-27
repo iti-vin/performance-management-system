@@ -10,10 +10,11 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "@/features/auth/services/session-cookie";
 import {
   postGoalTemplateVersion,
+  postArchiveGoalTemplate,
   postPublishGoalTemplate,
   postUpdateGoalTemplate,
 } from "@/features/review-templates/api/goal-template-requests";
-import { apiErrorText } from "@/features/review-templates/services/api-error-text";
+import { apiErrorText } from "@/utils/api-error-text";
 import { GOAL_TEMPLATE_PATH } from "@/constants/goal-template-path";
 
 type ActionResult = { message: string };
@@ -107,4 +108,21 @@ export async function publishGoalTemplate(templateId: string): Promise<ActionRes
   }
   if (message) return { message };
   redirect(`${GOAL_TEMPLATE_PATH}?saved=published`);
+}
+
+/** Archives a draft or a published template. It cannot be undone from the app. */
+export async function archiveGoalTemplate(templateId: string): Promise<ActionResult> {
+  if (!isTemplateId(templateId)) return { message: CHECK_TEMPLATE };
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { message: LOG_IN_AGAIN };
+
+  const fallback = "The template could not be archived. Try again.";
+  let message: string | null;
+  try {
+    message = failureOf(await postArchiveGoalTemplate(accessToken, templateId), fallback);
+  } catch {
+    message = fallback;
+  }
+  if (message) return { message };
+  redirect(`${GOAL_TEMPLATE_PATH}?saved=archived`);
 }

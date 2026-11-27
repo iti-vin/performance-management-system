@@ -54,9 +54,9 @@ describe("parseGoalTemplateParams", () => {
         status: "archived",
         q: "  engineer ",
         page: "3",
-        pageSize: "25",
+        pageSize: "20",
       }),
-    ).toEqual({ tab: "draft", status: "archived", q: "engineer", page: 3, pageSize: 25 });
+    ).toEqual({ tab: "draft", status: "archived", q: "engineer", page: 3, pageSize: 20 });
   });
 
   it("falls back to the defaults for invalid values", () => {

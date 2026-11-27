@@ -17,7 +17,7 @@ const FOOTER_CLASS =
 
 interface ListingPageTemplateProps {
   title: string;
-  description?: string;
+  description?: ReactNode;
   actions?: ReactNode;
   toolbar?: ReactNode;
   children: ReactNode;

@@ -44,6 +44,8 @@ test("cycles row accepts numeric weights as strings", () => {
     cycleId: "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
     company: "Mayon Consolidated Inc.",
     name: "H1 2026",
+    description: null,
+    accomplishmentDeadline: null,
     reviewType: "standard",
     state: "draft",
     evaluationStart: "2026-01-01",

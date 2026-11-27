@@ -8,6 +8,7 @@ export const accomplishmentActualsRowSchema = z.object({
   accomplishmentId: idSchema,
   indicatorId: idSchema,
   actualValue: decimalSchema.nullable(),
+  remarks: z.string().nullable(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
 });

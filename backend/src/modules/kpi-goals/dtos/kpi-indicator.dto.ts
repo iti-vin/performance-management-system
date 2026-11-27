@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -82,7 +83,7 @@ export class MatrixRowDto {
 }
 
 export class IndicatorDto {
-  @ApiProperty({ description: 'Optional. Set for an indicator that already exists. Generated when missing.' })
+  @ApiProperty({ description: 'Optional. Kept only when it names an indicator of the draft that is saved. Anything else gets a new id.' })
   @IsOptional()
   @IsUUID('all')
   indicatorId?: string;
@@ -91,6 +92,7 @@ export class IndicatorDto {
   @IsString()
   @MinLength(1)
   @MaxLength(300)
+  @Matches(/\S/, { message: 'name must not be blank' })
   name: string;
 
   @ApiProperty({ required: false, nullable: true })

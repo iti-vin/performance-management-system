@@ -20,10 +20,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { startTransition, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useStore } from "zustand";
 import fullLogo from "../../public/assets/hrdotnet-logo-full.png";
 import { Button } from "@/components/ui/button";
+import { markWorkspaceShown } from "@/utils/signed-in-document";
 import {
   Popover,
   PopoverContent,
@@ -351,6 +352,7 @@ export function WorkspaceLayout({
   accountEmail,
   isLoading = false,
 }: WorkspaceLayoutProps) {
+  useEffect(() => markWorkspaceShown(), []);
   const departmentLabel = departmentName.trim().replace(/\s+Department$/i, "");
   const isMobile = useIsMobile();
   const [store] = useState(createWorkspaceStore);

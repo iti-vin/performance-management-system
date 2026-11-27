@@ -1,177 +1,74 @@
-"use client";
+import { ACCOMPLISHMENT_TEXT_MAX_LENGTH, type AccomplishmentDetailDto } from "@pms/shared-types";
+import { useId } from "react";
 
-import { useState } from "react";
-
-import { ConfirmationDialog } from "@/components/molecules/confirmation-dialog";
-import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
-import type { KpiIndicatorResult } from "@/types/kpi-indicator";
+import { IndicatorTable } from "@/features/position-goals/components/indicator-table";
+import type { ReportDraft } from "@/features/position-goals/services/actuals-request";
 
-interface KpiReportingFormProps {
-  indicators: readonly KpiIndicatorResult[];
-  canSubmit: boolean;
-  correctionReason?: string;
-  onSave: (
-    results: { id: string; actual: number | null; remarks: string }[],
-    intent: "draft" | "submit",
-  ) => void;
+interface TextFieldProps {
+  label: string;
+  value: string;
+  error?: string;
+  onChange: (value: string) => void;
 }
 
-export function KpiReportingForm({
-  indicators,
-  canSubmit,
-  correctionReason,
-  onSave,
-}: KpiReportingFormProps) {
-  const [draft, setDraft] = useState(() =>
-    indicators.map((indicator) => ({
-      ...indicator,
-      actual: indicator.actual === null ? "" : String(indicator.actual),
-    })),
+/** One labelled text of the report with its problem under it. */
+export function ReportTextField({ label, value, error, onChange }: TextFieldProps) {
+  const id = useId();
+  return (
+    <Field data-invalid={error ? true : undefined}>
+      <FieldLabel htmlFor={id} className="text-pms-label">
+        {label}
+      </FieldLabel>
+      <Textarea
+        id={id}
+        value={value}
+        maxLength={ACCOMPLISHMENT_TEXT_MAX_LENGTH}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        onChange={(event) => onChange(event.currentTarget.value)}
+      />
+      {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
+    </Field>
   );
-  const [confirm, setConfirm] = useState(false);
-  const [error, setError] = useState("");
+}
 
-  function update(id: string, changes: { actual?: string; remarks?: string }) {
-    setDraft(
-      draft.map((item) => (item.id === id ? { ...item, ...changes } : item)),
-    );
-    setError("");
-  }
+interface KpiReportingFormProps {
+  detail: AccomplishmentDetailDto;
+  draft: ReportDraft;
+  /** The problems by indicator id, and by `remarks` and `correctionReason`. */
+  errors: Readonly<Record<string, string>>;
+  onChange: (draft: ReportDraft) => void;
+}
 
-  function validate(intent: "draft" | "submit") {
-    const invalid = draft.find(
-      ({ actual, remarks }) =>
-        (actual === ""
-          ? intent === "submit"
-          : !Number.isFinite(Number(actual)) || Number(actual) < 0) ||
-        remarks.length > 2000,
-    );
-    const issue = invalid
-      ? `${invalid.name}: check the actual result and remarks.`
-      : "";
-    setError(issue);
-    return !issue && draft.length > 0;
-  }
-
-  function save(intent: "draft" | "submit") {
-    onSave(
-      draft.map(({ id, actual, remarks }) => ({
-        id,
-        actual: actual === "" ? null : Number(actual),
-        remarks: remarks.trim(),
-      })),
-      intent,
-    );
-  }
+/** The fields of a report that the employee may change: one value for each indicator, one remark. */
+export function KpiReportingForm({ detail, draft, errors, onChange }: KpiReportingFormProps) {
+  const changeValue = (indicatorId: string, value: string) =>
+    onChange({ ...draft, values: { ...draft.values, [indicatorId]: value } });
+  const changeNote = (indicatorId: string, note: string) =>
+    onChange({ ...draft, notes: { ...draft.notes, [indicatorId]: note } });
 
   return (
-    <form
-      noValidate
-      className="grid min-w-0 gap-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (canSubmit && validate("submit")) setConfirm(true);
-      }}
-    >
-      <h2 className="text-pms-section-title">Report KPI accomplishments</h2>
-      {correctionReason && (
-        <p className="text-pms-body">
-          <strong>Correction requested:</strong> {correctionReason}
-        </p>
-      )}
-      {!draft.length && (
-        <p className="text-pms-body text-muted-foreground">
-          No KPI indicators are assigned.
-        </p>
-      )}
-      {draft.map((indicator) => (
-        <FieldSet
-          key={indicator.id}
-          className="min-w-0 gap-4 rounded-pms-card border border-border bg-card p-4"
-        >
-          <FieldLegend className="text-pms-section-title">
-            {indicator.name}
-          </FieldLegend>
-          <FieldDescription>
-            Target: {indicator.target} {indicator.unit}
-          </FieldDescription>
-          <Field>
-            <FieldLabel className="w-full flex-col items-stretch text-pms-label">
-              Actual result
-              <Input
-                type="number"
-                min={0}
-                step="any"
-                required
-                value={indicator.actual}
-                className="min-h-pms-touch rounded-pms-control"
-                onChange={(event) =>
-                  update(indicator.id, { actual: event.currentTarget.value })
-                }
-              />
-            </FieldLabel>
-          </Field>
-          <Field>
-            <FieldLabel className="w-full flex-col items-stretch text-pms-label">
-              Remarks (optional)
-              <Textarea
-                maxLength={2000}
-                value={indicator.remarks}
-                onChange={(event) =>
-                  update(indicator.id, { remarks: event.currentTarget.value })
-                }
-              />
-            </FieldLabel>
-          </Field>
-        </FieldSet>
-      ))}
-      {!canSubmit && (
-        <p className="text-pms-label text-muted-foreground">
-          Submission is currently unavailable. You can save a draft.
-        </p>
-      )}
-      <FieldError>{error}</FieldError>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-pms-touch"
-          disabled={!draft.length}
-          onClick={() => {
-            if (validate("draft")) save("draft");
-          }}
-        >
-          Save draft
-        </Button>
-        <Button
-          type="submit"
-          className="min-h-pms-touch"
-          disabled={!canSubmit || !draft.length}
-        >
-          Submit accomplishments
-        </Button>
-      </div>
-      <ConfirmationDialog
-        open={confirm}
-        title="Submit accomplishments?"
-        description="Submitted results are locked unless your manager returns them for correction."
-        confirmLabel="Confirm submission"
-        onClose={() => setConfirm(false)}
-        onConfirm={() => {
-          setConfirm(false);
-          if (canSubmit && validate("submit")) save("submit");
-        }}
+    <section aria-label="Your report" className="grid min-w-0 gap-4 rounded-pms-card border border-border bg-card p-4">
+      <IndicatorTable
+        detail={detail}
+        fields={{ values: draft.values, errors, onChange: changeValue, notes: draft.notes, onNoteChange: changeNote }}
       />
-    </form>
+      <ReportTextField
+        label="Remarks (optional)"
+        value={draft.remarks}
+        error={errors.remarks}
+        onChange={(remarks) => onChange({ ...draft, remarks })}
+      />
+      {detail.status === "returned" && (
+        <ReportTextField
+          label="What you corrected (sent when you submit, not saved with a draft)"
+          value={draft.correctionReason}
+          error={errors.correctionReason}
+          onChange={(correctionReason) => onChange({ ...draft, correctionReason })}
+        />
+      )}
+    </section>
   );
 }

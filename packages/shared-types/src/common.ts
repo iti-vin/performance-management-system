@@ -59,14 +59,18 @@ export const requiredTextSchema = z
   .trim()
   .min(1, "This field is required.");
 
+/** A text that PostgreSQL can store: it refuses the NUL character in `text` and in `jsonb`. */
+export const storableTextSchema = z
+  .string()
+  .refine(
+    (value) => !value.includes("\u0000"),
+    "Remove the character that cannot be saved.",
+  );
+
 /** Free-form JSON object whose shape the backend has not defined yet. */
 export const jsonObjectSchema = z.record(z.string(), z.unknown());
 
-/**
- * Page envelope. ASSUMPTION: the backend has no list endpoints yet, so this
- * shape follows `ListingPagination` (page, pageSize, total). Adjust once the
- * real contract exists.
- */
+/** One page of a list: the items, the page asked for, its size, and the total of the filtered set. */
 export function pageSchema<Item extends z.ZodType>(item: Item) {
   return z.object({
     items: z.array(item),

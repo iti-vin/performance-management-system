@@ -22,6 +22,10 @@ describe("KpiGoalsController actor", () => {
     publish: vi.fn(),
     listPositions: vi.fn(),
     createVersion: vi.fn(),
+    list: vi.fn(),
+    getById: vi.fn(),
+    update: vi.fn(),
+    archive: vi.fn(),
   };
   const controller = new KpiGoalsController(service as unknown as KpiGoalsService);
 
@@ -45,6 +49,20 @@ describe("KpiGoalsController actor", () => {
     await controller.createVersion(TEMPLATE_ID, dto, request);
 
     expect(service.createVersion).toHaveBeenCalledWith(TEMPLATE_ID, dto, "user-1");
+  });
+
+  it("passes the signed-in user id to every read, update, and archive", async () => {
+    const dto = { name: "Template", indicators: [] };
+
+    await controller.list(request);
+    await controller.getById(TEMPLATE_ID, request);
+    await controller.update(TEMPLATE_ID, dto, request);
+    await controller.archive(TEMPLATE_ID, request);
+
+    expect(service.list).toHaveBeenCalledWith("user-1");
+    expect(service.getById).toHaveBeenCalledWith(TEMPLATE_ID, "user-1");
+    expect(service.update).toHaveBeenCalledWith(TEMPLATE_ID, dto, "user-1");
+    expect(service.archive).toHaveBeenCalledWith(TEMPLATE_ID, "user-1");
   });
 
   it("lists the positions for the signed-in user", async () => {

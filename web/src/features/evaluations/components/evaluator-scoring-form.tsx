@@ -1,229 +1,257 @@
 "use client";
 
-import { useState } from "react";
+import { REVIEW_TEXT_MAX_LENGTH, type ReviewSectionDto, type SubmitBehavioralAssessmentRequestDto } from "@pms/shared-types";
+import { ChevronLeftIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { ConfirmationDialog } from "@/components/molecules/confirmation-dialog";
-import { FormSelect } from "@/components/molecules/form-select";
-import { DataTable } from "@/components/organisms/data-table";
-import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldError,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { UnsavedChangesDialog } from "@/components/molecules/unsaved-changes-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import type { ReviewSection } from "@/types/review-question";
+import { Button } from "@/components/ui/button";
+import { FieldError, FieldLegend, FieldSet } from "@/components/ui/field";
+import { ReviewCompletion } from "@/features/evaluations/components/review-completion";
+import { ReviewAnswerText, ReviewQuestionField } from "@/features/evaluations/components/review-question-field";
+import { toSubmitBehavioralAssessmentRequest } from "@/features/evaluations/services/assessment-request";
+import { useProblemFocus } from "@/hooks/use-problem-focus";
+import { useUnsavedChangesWarning } from "@/hooks/use-unsaved-changes-warning";
+import type { FormActionResult } from "@/types/form-action";
+import { withoutProblems } from "@/utils/form-problems";
 
-interface EvaluatorScoringFormProps {
-  employeeName: string;
-  stageName: string;
-  sections: readonly ReviewSection[];
-  verifiedGoals?: readonly {
-    id: string;
-    name: string;
-    target: number;
-    actual: number;
-    score: number;
-  }[];
-  initialAnswers?: Readonly<Record<string, string>>;
-  initialFeedback?: string;
-  isEditable: boolean;
-  onSave: (
-    response: { answers: Record<string, string>; feedback: string },
-    intent: "draft" | "submit",
-  ) => void;
+type Send = (body: SubmitBehavioralAssessmentRequestDto) => Promise<FormActionResult>;
+type Values = Readonly<Record<string, string>>;
+
+const SECTION_CLASS = "min-w-0 gap-4 rounded-pms-card border border-border bg-card p-4";
+/** A pending action stays focusable: the `disabled` attribute would drop the focus to the page body. */
+const ACTION_CLASS = "min-h-pms-touch rounded-pms-control data-disabled:opacity-50";
+const NO_PROBLEMS: FormActionResult = { message: null, fieldErrors: {} };
+const REQUIRED_MESSAGE = "Answer every required question before you submit.";
+
+const requiredOf = (sections: readonly ReviewSectionDto[]) =>
+  sections.flatMap((section) => section.questions).filter((question) => question.isRequired);
+
+/** The required questions with no value, each with its problem. */
+function missingRequired(sections: readonly ReviewSectionDto[], values: Values): Record<string, string> {
+  const missing = requiredOf(sections).filter((question) => !values[question.questionId]?.trim());
+  return Object.fromEntries(missing.map((question) => [question.questionId, "Answer this question."]));
 }
 
-const RATINGS = [1, 2, 3, 4, 5].map((value) => ({
-  value: String(value),
-  label: String(value),
-}));
+/** True when a value differs from the saved one. Spaces around a text are not a change: the API trims them. */
+function differs(sections: readonly ReviewSectionDto[], values: Values, saved: Values): boolean {
+  return sections
+    .flatMap((section) => section.questions)
+    .some(({ questionId }) => (values[questionId]?.trim() ?? "") !== (saved[questionId]?.trim() ?? ""));
+}
 
-export function EvaluatorScoringForm({
-  employeeName,
-  stageName,
-  sections,
-  verifiedGoals = [],
-  initialAnswers,
-  initialFeedback = "",
-  isEditable,
-  onSave,
-}: EvaluatorScoringFormProps) {
-  const [answers, setAnswers] = useState(() => ({ ...initialAnswers }));
+/** The free text of the review (the sample calls it Written Feedback). A reader sees it only when there is one. */
+function WrittenFeedback({ isEditable, value, onChange }: { isEditable: boolean; value: string; onChange: (value: string) => void }) {
+  if (!isEditable && !value) return null;
+  return (
+    <section className={SECTION_CLASS}>
+      <label htmlFor="written-feedback" className="text-pms-section-title">
+        {isEditable ? "Written Feedback (optional)" : "Written Feedback"}
+      </label>
+      {isEditable ? (
+        <Textarea id="written-feedback" maxLength={REVIEW_TEXT_MAX_LENGTH} value={value} onChange={(event) => onChange(event.target.value)} />
+      ) : (
+        <p className="max-w-pms-copy text-pms-body whitespace-pre-wrap wrap-break-word">{value}</p>
+      )}
+    </section>
+  );
+}
+
+export interface EvaluatorScoringFormProps {
+  sections: readonly ReviewSectionDto[];
+  /** The saved answers, by question id, as the form holds them. */
+  /** The saved written feedback. */
+  initialFeedback?: string;
+  initialAnswers: Values;
+  isEditable: boolean;
+  /** The caller may not read the review: the summary says why, and nothing else shows. */
+  isRestricted?: boolean;
+  /** True while the review may be saved but not yet submitted. */
+  isSubmitBlocked?: boolean;
+  /** The list that Back returns to, with its filters. */
+  backHref: string;
+  /** The words of the way back, when it is not the review list. */
+  backLabel?: string;
+  /** What the page says about the review, between the way back and the questions. */
+  summary?: ReactNode;
+  /** What stands over the questions, in their column. */
+  intro?: ReactNode;
+  onSave: Send;
+  onSubmit: Send;
+}
+
+/**
+ * The questions of one review. An evaluator saves a draft or submits it after a confirmation.
+ * A review that cannot be changed shows its answers as words.
+ */
+export function EvaluatorScoringForm(props: EvaluatorScoringFormProps) {
+  const { sections, initialAnswers, initialFeedback = "", isEditable, isSubmitBlocked = false, isRestricted = false, backHref, backLabel = "Back to Reviews", summary, intro, onSave, onSubmit } = props;
+  const router = useRouter();
+  const [values, setValues] = useState<Values>(initialAnswers);
+  const [problems, setProblems] = useState(NO_PROBLEMS);
+  const [done, setDone] = useState("");
+  const [dialog, setDialog] = useState<"submit" | "leave" | null>(null);
+  const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState(initialFeedback);
-  const [confirm, setConfirm] = useState(false);
-  const [error, setError] = useState("");
+  const isDirty = isEditable && (differs(sections, values, initialAnswers) || feedback.trim() !== initialFeedback.trim());
+  useUnsavedChangesWarning(isDirty);
 
-  function update(id: string, value: string) {
-    setAnswers({ ...answers, [id]: value });
-    setError("");
+  const formRef = useRef<HTMLFormElement>(null);
+  const showProblems = useProblemFocus(formRef, problems, setProblems);
+
+  const resultRef = useRef<HTMLParagraphElement>(null);
+  // A submitted review has no more actions: the focus goes to what happened.
+  useEffect(() => {
+    if (!isEditable && done) resultRef.current?.focus();
+  }, [isEditable, done]);
+
+  function change(questionId: string, value: string) {
+    setValues((current) => ({ ...current, [questionId]: value }));
+    setProblems((current) => withoutProblems(current, [questionId], [REQUIRED_MESSAGE]));
+    setDone("");
   }
 
-  function validate() {
-    for (const { questions } of sections) {
-      for (const question of questions) {
-        const answer = answers[question.id]?.trim() ?? "";
-        if (question.required && !answer) return `Answer “${question.title}”.`;
-        const options =
-          question.type === "rating_scale"
-            ? (question.options ?? RATINGS)
-            : question.options;
-        if (
-          answer &&
-          (question.type === "rating_scale" || question.type === "multiple_choice") &&
-          !options?.some((option) => option.value === answer)
-        )
-          return `Choose a valid response for “${question.title}”.`;
-      }
+  function send(action: Send, success: string) {
+    const body = toSubmitBehavioralAssessmentRequest(sections, values, feedback);
+    if (!body.success) {
+      setProblems({ message: "Check your answers and try again.", fieldErrors: {} });
+      return;
     }
-    return "";
+    setProblems(NO_PROBLEMS);
+    setDone("");
+    startTransition(async () => {
+      try {
+        const result = await action(body.data);
+        showProblems(result);
+        if (result.message === null) setDone(success);
+      } catch {
+        setProblems({ message: "Something went wrong. Try again.", fieldErrors: {} });
+      }
+    });
   }
 
-  function save(intent: "draft" | "submit") {
-    onSave({ answers, feedback: feedback.trim() }, intent);
+  function askToSubmit() {
+    const missing = missingRequired(sections, values);
+    if (Object.keys(missing).length > 0) {
+      showProblems({ message: REQUIRED_MESSAGE, fieldErrors: missing });
+      return;
+    }
+    setProblems(NO_PROBLEMS);
+    setDialog("submit");
+  }
+
+  const required = requiredOf(sections).length;
+  const answered = required - Object.keys(missingRequired(sections, values)).length;
+  const hasNotObserved = sections.some((section) => section.questions.some((question) => question.allowNotObserved));
+
+  function leave() {
+    setDialog(null);
+    // Next keeps a page that the user left, hidden: a return must not show discarded edits.
+    setValues(initialAnswers);
+    setFeedback(initialFeedback);
+    setProblems(NO_PROBLEMS);
+    router.push(backHref);
   }
 
   return (
-    <form
-      noValidate
-      className="grid min-w-0 gap-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!isEditable) return;
-        const issue = validate();
-        setError(issue);
-        if (!issue) setConfirm(true);
-      }}
-    >
-      <div>
-        <h2 className="text-pms-section-title">{stageName}</h2>
-        <p className="text-pms-body text-muted-foreground">{employeeName}</p>
-      </div>
-      {verifiedGoals.length > 0 && (
-        <DataTable
-          caption="Verified goals performance"
-          rows={verifiedGoals}
-          getRowId={({ id }) => id}
-          emptyMessage="No verified goal results."
-          columns={[
-            { id: "goal", heading: "Goal", renderCell: ({ name }) => name },
-            {
-              id: "target",
-              heading: "Target",
-              align: "end",
-              renderCell: ({ target }) => target,
-            },
-            {
-              id: "actual",
-              heading: "Verified actual",
-              align: "end",
-              renderCell: ({ actual }) => actual,
-            },
-            {
-              id: "score",
-              heading: "Score",
-              align: "end",
-              renderCell: ({ score }) => score,
-            },
-          ]}
-        />
-      )}
-      {sections.map((section) => (
-        <FieldSet
-          key={section.id}
-          className="min-w-0 gap-4 rounded-pms-card border border-border bg-card p-4"
-        >
-          <FieldLegend className="text-pms-section-title">
-            {section.name}
-          </FieldLegend>
-          {section.questions.map((question) => {
-            const label = question.required
-              ? question.title
-              : `${question.title} (optional)`;
-            const answer = answers[question.id] ?? "";
-            const options =
-              question.type === "rating_scale"
-                ? (question.options ?? RATINGS)
-                : question.options;
-            if (!isEditable)
-              return (
-                <div key={question.id}>
-                  <p className="text-pms-label">{question.title}</p>
-                  <p className="text-pms-body">
-                    {options?.find(({ value }) => value === answer)?.label ??
-                      (answer || "No response")}
-                  </p>
-                </div>
-              );
-            if (question.type === "rating_scale" || question.type === "multiple_choice")
-              return (
-                <FormSelect
-                  key={question.id}
-                  label={label}
-                  value={answer || null}
-                  options={options ?? []}
-                  onChange={(value) => update(question.id, value)}
-                />
-              );
-            const Control = question.type === "short_answer" ? Input : Textarea;
-            return (
-              <Field key={question.id}>
-                <FieldLabel className="w-full flex-col items-stretch text-pms-label">
-                  {label}
-                  <Control
-                    value={answer}
-                    required={question.required}
-                    className="min-h-pms-touch rounded-pms-control"
-                    onChange={(event) =>
-                      update(question.id, event.currentTarget.value)
-                    }
+    <form ref={formRef} noValidate className="grid min-w-0 gap-4" onSubmit={(event) => event.preventDefault()}>
+      <Button
+        type="button"
+        variant="ghost"
+        className="min-h-pms-touch w-fit rounded-pms-control text-pms-label text-muted-foreground"
+        onClick={() => (isDirty ? setDialog("leave") : router.push(backHref))}
+      >
+        <ChevronLeftIcon aria-hidden="true" />
+        {backLabel}
+      </Button>
+      {summary}
+      {/* The actions sit beside the questions on a wide screen, and under them on a narrow one. */}
+      <div className={isEditable ? "grid min-w-0 gap-4 lg:grid-cols-3" : "grid min-w-0 gap-4"}>
+        <div className={isEditable ? "grid min-w-0 content-start gap-4 lg:col-span-2" : "grid min-w-0 gap-4"}>
+          {intro}
+          {sections.length === 0 && !isRestricted && <p className="text-pms-body">This review has no questions.</p>}
+          {sections.map((section, index) => (
+            <FieldSet key={section.sectionId} className={SECTION_CLASS}>
+              <FieldLegend className="text-pms-section-title">
+                <span aria-hidden="true" className="me-2 text-pms-label text-muted-foreground tabular-nums">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                {section.title}
+              </FieldLegend>
+              <p className="text-pms-label text-muted-foreground">
+                {section.questions.length === 1 ? "1 question" : `${section.questions.length} questions`}
+              </p>
+              {section.questions.map((question) =>
+                isEditable ? (
+                  <ReviewQuestionField
+                    key={question.questionId}
+                    question={question}
+                    value={values[question.questionId] ?? ""}
+                    error={problems.fieldErrors[question.questionId]}
+                    onChange={(value) => change(question.questionId, value)}
                   />
-                </FieldLabel>
-              </Field>
-            );
-          })}
-        </FieldSet>
-      ))}
-      <Field>
-        <FieldLabel className="w-full flex-col items-stretch text-pms-label">
-          Evaluator feedback (optional)
-          <Textarea
-            value={feedback}
-            readOnly={!isEditable}
-            onChange={(event) => setFeedback(event.currentTarget.value)}
+                ) : (
+                  <ReviewAnswerText key={question.questionId} question={question} value={initialAnswers[question.questionId] ?? ""} />
+                ),
+              )}
+            </FieldSet>
+          ))}
+          <WrittenFeedback
+            isEditable={isEditable}
+            value={isEditable ? feedback : initialFeedback}
+            onChange={(next) => {
+              setFeedback(next);
+              setDone("");
+            }}
           />
-        </FieldLabel>
-      </Field>
-      <FieldError>{error}</FieldError>
-      {isEditable && (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-pms-touch"
-            onClick={() => save("draft")}
-          >
-            Save draft
-          </Button>
-          <Button type="submit" className="min-h-pms-touch">
-            Submit assessment
-          </Button>
         </div>
-      )}
+        <div className="grid min-w-0 content-start gap-4 lg:sticky lg:top-4 lg:self-start">
+          {isEditable && (
+            <ReviewCompletion answered={answered} required={required} hasNotObserved={hasNotObserved}>
+              <div className="grid gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={ACTION_CLASS}
+                  disabled={isPending}
+                  focusableWhenDisabled
+                  onClick={() => send(onSave, "Draft saved.")}
+                >
+                  Save as Draft
+                </Button>
+                <Button
+                  type="button"
+                  className={ACTION_CLASS}
+                  disabled={isPending || isSubmitBlocked}
+                  focusableWhenDisabled
+                  onClick={askToSubmit}
+                >
+                  Submit Review
+                </Button>
+              </div>
+            </ReviewCompletion>
+          )}
+          <FieldError>{problems.message}</FieldError>
+          <p ref={resultRef} role="status" tabIndex={-1} className="rounded-pms-control text-pms-body">
+            {done}
+          </p>
+        </div>
+      </div>
       <ConfirmationDialog
-        open={confirm}
-        title="Submit this assessment?"
-        description="Your response becomes read-only after submission."
-        confirmLabel="Confirm submission"
-        onClose={() => setConfirm(false)}
+        open={dialog === "submit"}
+        title="Submit this review?"
+        description="After you submit, you cannot change your answers."
+        confirmLabel="Submit"
+        onClose={() => setDialog(null)}
         onConfirm={() => {
-          setConfirm(false);
-          if (isEditable && !validate()) save("submit");
+          setDialog(null);
+          send(onSubmit, "Review submitted.");
         }}
       />
+      <UnsavedChangesDialog open={dialog === "leave"} onStay={() => setDialog(null)} onLeave={leave} />
     </form>
   );
 }

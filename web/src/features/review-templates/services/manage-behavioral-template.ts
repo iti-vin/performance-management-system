@@ -7,11 +7,12 @@ import {
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { apiErrorText } from "@/features/review-templates/services/api-error-text";
+import { apiErrorText } from "@/utils/api-error-text";
 import { BEHAVIORAL_TEMPLATE_PATH } from "@/constants/behavioral-template-path";
 import { SESSION_COOKIE } from "@/features/auth/services/session-cookie";
 import {
   postBehavioralTemplateVersion,
+  postArchiveBehavioralTemplate,
   postPublishBehavioralTemplate,
   postUpdateBehavioralTemplate,
 } from "@/features/review-templates/api/behavioral-template-requests";
@@ -115,4 +116,21 @@ export async function publishBehavioralTemplate(templateId: string): Promise<Act
   }
   if (message) return { message };
   redirect(`${BEHAVIORAL_TEMPLATE_PATH}?saved=published`);
+}
+
+/** Archives a draft or a published template. It cannot be undone from the app. */
+export async function archiveBehavioralTemplate(templateId: string): Promise<ActionResult> {
+  if (!isTemplateId(templateId)) return { message: CHECK_TEMPLATE };
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { message: LOG_IN_AGAIN };
+
+  const fallback = "The template could not be archived. Try again.";
+  let message: string | null;
+  try {
+    message = failureOf(await postArchiveBehavioralTemplate(accessToken, templateId), fallback);
+  } catch {
+    message = fallback;
+  }
+  if (message) return { message };
+  redirect(`${BEHAVIORAL_TEMPLATE_PATH}?saved=archived`);
 }

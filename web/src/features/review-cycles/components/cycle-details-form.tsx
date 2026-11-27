@@ -1,8 +1,7 @@
 "use client";
 
-import { useId } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { Button } from "@/components/ui/button";
+import { MAX_CYCLE_DESCRIPTION_LENGTH, REVIEW_TYPES, type ReviewType } from "@pms/shared-types";
+import { FormSelect } from "@/components/molecules/form-select";
 import {
   Field,
   FieldDescription,
@@ -11,239 +10,176 @@ import {
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { REVIEW_TYPE_LABELS } from "@/constants/domain-labels";
+import { describeComponents, weightsOf } from "@/features/review-cycles/services/cycle-components";
+import { CYCLE_READERS } from "@/features/review-cycles/services/result-reader-choices";
 
-const REVIEW_TYPES = {
-  "Standard Performance Review":
-    "Evaluate performance over a regular review period.",
-  "360° Feedback": "Gather feedback from multiple evaluator perspectives.",
-  "Probationary Review": "Assess performance during the probation period.",
-  "Project-Based Review": "Evaluate contributions to a specific project.",
-};
-
-type ReviewType = keyof typeof REVIEW_TYPES;
-
-interface CycleDetails {
+export interface CycleDetails {
   name: string;
   reviewType: ReviewType;
-  description: string;
-  periodStart: string;
-  periodEnd: string;
+  evaluationStart: string;
+  evaluationEnd: string;
   assessmentStart: string;
+  verificationDeadline: string;
+  accomplishmentDeadline: string;
+  description: string;
+  usesGoals: boolean;
+  usesBehavioral: boolean;
+  employeeVisible: boolean;
+  managerVisible: boolean;
+  earlierAnswersVisible: boolean;
 }
+
+type DetailsField = keyof CycleDetails;
 
 interface CycleDetailsFormProps {
-  initialValues?: CycleDetails;
-  onContinue: (details: CycleDetails) => void;
+  values: CycleDetails;
+  /** The field that changed, with its new value. The wizard holds the draft. */
+  onChange: (change: Partial<CycleDetails>) => void;
+  /** The message of a field, shown under it. */
+  errors?: Partial<Record<DetailsField, string>>;
 }
 
-export function CycleDetailsForm({
-  initialValues,
-  onContinue,
-}: CycleDetailsFormProps) {
-  const id = useId();
-  const {
-    register,
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<CycleDetails>({
-    mode: "onSubmit",
-    defaultValues: initialValues ?? {
-      name: "",
-      reviewType: "Standard Performance Review",
-      description: "",
-      periodStart: "",
-      periodEnd: "",
-      assessmentStart: "",
-    },
-  });
+const REVIEW_TYPE_OPTIONS = REVIEW_TYPES.map((value) => ({
+  value,
+  label: REVIEW_TYPE_LABELS[value],
+}));
 
-  function renderDateField(
-    name: "periodStart" | "periodEnd" | "assessmentStart",
-    label: string,
-  ) {
-    const inputId = `${id}-${name}`;
-    const error = errors[name];
+const DATE_FIELDS = [
+  { field: "evaluationStart", label: "Evaluation Period Start" },
+  { field: "evaluationEnd", label: "Evaluation Period End" },
+  { field: "assessmentStart", label: "Assessment Start Date" },
+  { field: "accomplishmentDeadline", label: "Employee Accomplishment Deadline (optional)" },
+  { field: "verificationDeadline", label: "Manager Verification Deadline" },
+] as const;
 
+const COMPONENT_FIELDS = [
+  { field: "usesGoals", label: "Goals Performance" },
+  { field: "usesBehavioral", label: "Behavioral Performance" },
+] as const;
+
+function componentWords(choice: Pick<CycleDetails, "usesGoals" | "usesBehavioral">): string {
+  const { goalsWeight, behavioralWeight } = weightsOf(choice);
+  const applied = describeComponents(goalsWeight, behavioralWeight);
+  return applied.length === 0 ? "Choose at least one component." : `${applied.join(" and ")}.`;
+}
+
+export function CycleDetailsForm({ values, onChange, errors = {} }: CycleDetailsFormProps) {
+  function dateField({ field, label }: (typeof DATE_FIELDS)[number]) {
+    const error = errors[field];
+    const id = `cycle-${field}`;
     return (
-      <Field data-invalid={Boolean(error)}>
-        <FieldLabel htmlFor={inputId} className="text-pms-label">
+      <Field key={field} data-invalid={Boolean(error)}>
+        <FieldLabel htmlFor={id} className="text-pms-label">
           {label}
         </FieldLabel>
         <Input
-          id={inputId}
+          id={id}
           type="date"
-          required
           className="min-h-pms-touch rounded-pms-control"
+          value={values[field]}
           aria-invalid={Boolean(error)}
-          aria-describedby={error ? `${inputId}-error` : undefined}
-          {...register(name, {
-            required: `Enter the ${label.toLowerCase()}.`,
-            validate: (value, values) =>
-              name !== "periodEnd" ||
-              !values.periodStart ||
-              value >= values.periodStart ||
-              "Evaluation period end must be on or after its start.",
-            deps: name === "periodStart" ? "periodEnd" : undefined,
-          })}
+          aria-describedby={error ? `${id}-error` : undefined}
+          onChange={(event) => onChange({ [field]: event.target.value })}
         />
-        <FieldError id={`${inputId}-error`} errors={[error]} />
+        <FieldError id={`${id}-error`}>{error}</FieldError>
       </Field>
     );
   }
 
   return (
-    <form
-      noValidate
-      onSubmit={handleSubmit((details) =>
-        onContinue({
-          ...details,
-          name: details.name.trim(),
-          description: details.description.trim(),
-        }),
-      )}
-      className="grid min-w-0 gap-pms-section"
-    >
+    <div className="grid min-w-0 gap-pms-section">
       <FieldSet className="min-w-0 gap-4">
-        <FieldLegend className="text-pms-section-title">
-          Basic information
-        </FieldLegend>
+        <FieldLegend className="text-pms-section-title">Basic Information</FieldLegend>
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
           <Field data-invalid={Boolean(errors.name)}>
-            <FieldLabel htmlFor={`${id}-name`} className="text-pms-label">
-              Cycle name
+            <FieldLabel htmlFor="cycle-name" className="text-pms-label">
+              Cycle Name
             </FieldLabel>
             <Input
-              id={`${id}-name`}
-              required
+              id="cycle-name"
               maxLength={120}
               className="min-h-pms-touch rounded-pms-control"
+              value={values.name}
               aria-invalid={Boolean(errors.name)}
-              aria-describedby={errors.name ? `${id}-name-error` : undefined}
-              {...register("name", {
-                validate: (value) =>
-                  Boolean(value.trim()) || "Enter a cycle name.",
-                maxLength: {
-                  value: 120,
-                  message: "Use 120 characters or fewer.",
-                },
-              })}
+              aria-describedby={errors.name ? "cycle-name-error" : undefined}
+              onChange={(event) => onChange({ name: event.target.value })}
             />
-            <FieldError id={`${id}-name-error`} errors={[errors.name]} />
+            <FieldError id="cycle-name-error">{errors.name}</FieldError>
           </Field>
-          <Controller
-            name="reviewType"
-            control={control}
-            render={({ field }) => (
-              <Field>
-                <FieldLabel htmlFor={`${id}-type`} className="text-pms-label">
-                  Review type
-                </FieldLabel>
-                <Select<ReviewType>
-                  value={field.value}
-                  onValueChange={(value) => {
-                    if (value !== null) field.onChange(value);
-                  }}
-                  required
-                >
-                  <SelectTrigger
-                    id={`${id}-type`}
-                    ref={field.ref}
-                    onBlur={field.onBlur}
-                    aria-describedby={`${id}-type-description`}
-                    className="min-h-pms-touch w-full min-w-0 rounded-pms-control"
-                  >
-                    <SelectValue className="min-w-0">{field.value}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent alignItemWithTrigger={false}>
-                    {(Object.keys(REVIEW_TYPES) as ReviewType[]).map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldDescription id={`${id}-type-description`}>
-                  {REVIEW_TYPES[field.value]}
-                </FieldDescription>
-              </Field>
-            )}
+          <FormSelect
+            label="Review Type"
+            value={values.reviewType}
+            options={REVIEW_TYPE_OPTIONS}
+            onChange={(reviewType) => onChange({ reviewType })}
+            error={errors.reviewType}
           />
-          <Field
-            className="md:col-span-2"
-            data-invalid={Boolean(errors.description)}
-          >
-            <FieldLabel
-              htmlFor={`${id}-description`}
-              className="text-pms-label"
-            >
-              Description (optional)
-            </FieldLabel>
-            <Textarea
-              id={`${id}-description`}
-              rows={3}
-              maxLength={2000}
-              className="rounded-pms-control"
-              aria-invalid={Boolean(errors.description)}
-              aria-describedby={
-                errors.description ? `${id}-description-error` : undefined
-              }
-              {...register("description", {
-                maxLength: {
-                  value: 2000,
-                  message: "Use 2,000 characters or fewer.",
-                },
-              })}
-            />
-            <FieldError
-              id={`${id}-description-error`}
-              errors={[errors.description]}
-            />
-          </Field>
+        </div>
+        <Field data-invalid={Boolean(errors.description)}>
+          <FieldLabel htmlFor="cycle-description" className="text-pms-label">
+            Description (optional)
+          </FieldLabel>
+          <Textarea
+            id="cycle-description"
+            maxLength={MAX_CYCLE_DESCRIPTION_LENGTH}
+            value={values.description}
+            aria-invalid={Boolean(errors.description)}
+            aria-describedby={errors.description ? "cycle-description-error" : undefined}
+            onChange={(event) => onChange({ description: event.target.value })}
+          />
+          <FieldError id="cycle-description-error">{errors.description}</FieldError>
+        </Field>
+      </FieldSet>
+
+      <FieldSet className="min-w-0 gap-4">
+        <FieldLegend className="text-pms-section-title">Components</FieldLegend>
+        <FieldDescription>What this cycle measures. Both count half each; one alone counts in full.</FieldDescription>
+        <div className="flex flex-wrap gap-4">
+          {COMPONENT_FIELDS.map(({ field, label }) => (
+            <label key={field} className="flex min-h-pms-touch items-center gap-2 text-pms-body">
+              <Checkbox checked={values[field]} onCheckedChange={(checked) => onChange({ [field]: checked === true })} />
+              {label}
+            </label>
+          ))}
+        </div>
+        <p className="text-pms-body">{componentWords(values)}</p>
+        <FieldError>{errors.usesGoals}</FieldError>
+      </FieldSet>
+
+      <FieldSet className="min-w-0 gap-4">
+        <FieldLegend className="text-pms-section-title">Result Visibility</FieldLegend>
+        <FieldDescription>
+          Employees and managers read the results and reviews after the release. Reviewers of a later stage read earlier
+          answers while the cycle runs. HR administrators always can.
+        </FieldDescription>
+        <div className="flex flex-wrap gap-4">
+          {CYCLE_READERS.map(({ field, label }) => (
+            <label key={field} className="flex min-h-pms-touch items-center gap-2 text-pms-body">
+              <Checkbox checked={values[field]} onCheckedChange={(checked) => onChange({ [field]: checked === true })} />
+              {label}
+            </label>
+          ))}
         </div>
       </FieldSet>
 
       <FieldSet className="min-w-0 gap-4">
-        <FieldLegend className="text-pms-section-title">
-          Evaluation period
-        </FieldLegend>
-        <FieldDescription>
-          The period of employee performance being evaluated.
-        </FieldDescription>
-        <div className="grid min-w-0 gap-4 md:grid-cols-2">
-          {renderDateField("periodStart", "Evaluation period start")}
-          {renderDateField("periodEnd", "Evaluation period end")}
-        </div>
+        <FieldLegend className="text-pms-section-title">Evaluation Period</FieldLegend>
+        <FieldDescription>The period of employee performance being evaluated.</FieldDescription>
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">{DATE_FIELDS.slice(0, 2).map(dateField)}</div>
       </FieldSet>
 
       <FieldSet className="min-w-0 gap-4">
-        <FieldLegend className="text-pms-section-title">
-          Assessment schedule
-        </FieldLegend>
+        <FieldLegend className="text-pms-section-title">Assessment Schedule</FieldLegend>
         <FieldDescription>
-          The first stage opens on this date. The last stage sets the final
-          deadline.
+          The first stage opens on the assessment start date. Employees report their results by the
+          accomplishment deadline, after the evaluation period. Managers verify them by the verification
+          deadline, and a cycle with goals gives the manager assessment a later deadline. Dates are in Asia/Manila time.
         </FieldDescription>
-        <div className="grid min-w-0 gap-4 md:grid-cols-2">
-          {renderDateField("assessmentStart", "Assessment start date")}
-        </div>
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">{DATE_FIELDS.slice(2).map(dateField)}</div>
       </FieldSet>
-
-      <Button
-        type="submit"
-        className="min-h-pms-touch rounded-pms-control justify-self-start"
-      >
-        Continue
-      </Button>
-    </form>
+    </div>
   );
 }

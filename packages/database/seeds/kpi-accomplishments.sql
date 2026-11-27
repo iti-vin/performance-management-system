@@ -40,7 +40,7 @@ VALUES
      'actuals',
      jsonb_build_array(
        jsonb_build_object('indicator_id', '00000000-0000-0000-0000-000000000061', 'actual_value', 4),
-       jsonb_build_object('indicator_id', '00000000-0000-0000-000000000062', 'actual_value', 1)
+       jsonb_build_object('indicator_id', '00000000-0000-0000-0000-000000000062', 'actual_value', 1)
      )
    ),
    'Initial submission',

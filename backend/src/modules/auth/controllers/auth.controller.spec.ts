@@ -4,6 +4,17 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { AuthService } from "../services/auth.service.js";
 import { AccountRegistrationService } from "../services/account-registration.service.js";
 import { AuthController } from "./auth.controller.js";
+import { RATE_LIMIT_POLICY } from "../../../common/rate-limit/rate-limit.decorator.js";
+
+describe("AuthController rate limits", () => {
+  it.each([
+    ["login", "login"],
+    ["refreshToken", "refresh"],
+    ["me", "session"],
+  ] as const)("limits %s by the %s policy", (method, policy) => {
+    expect(Reflect.getMetadata(RATE_LIMIT_POLICY, AuthController.prototype[method])).toBe(policy);
+  });
+});
 
 describe("Auth token response documentation", () => {
   let document: OpenAPIObject;

@@ -16,6 +16,7 @@ import {
 
 const NOT_CONFIGURED = "The authentication service is not configured.";
 const COULD_NOT_COMPLETE = "Authentication could not be completed. Try again.";
+const TOO_MANY = "Too many attempts. Wait a minute and try again.";
 
 type SubmitResult = {
   message: string;
@@ -60,6 +61,9 @@ export async function submitCredentials(
       kind: "invalidCredentials",
       message: "Email, username, or password is incorrect.",
     };
+  }
+  if (status === 429) {
+    return { message: TOO_MANY };
   }
   if (status < 200 || status >= 300) {
     return { message: COULD_NOT_COMPLETE };

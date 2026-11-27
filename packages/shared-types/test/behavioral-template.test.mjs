@@ -109,6 +109,7 @@ test("template list response is a list of template rows", () => {
       reviewType: "self",
       status: "published",
       currentVersion: 2,
+      questionCount: 5,
       publishedBy: ID,
       publishedAt: "2026-11-24T06:00:00.000Z",
       archivedAt: null,
@@ -121,4 +122,26 @@ test("template list response is a list of template rows", () => {
 
 test("review types list HR right after Upward, and Others last", () => {
   assert.deepEqual([...shared.BEHAVIORAL_REVIEW_TYPES], ["self", "manager", "peer", "upward", "hr", "others"]);
+});
+
+test("a template list row says how many questions its current version has", () => {
+  const row = {
+    templateId: ID,
+    company: "Mayon Consolidated Inc.",
+    name: null,
+    description: null,
+    category: null,
+    reviewType: null,
+    status: "draft",
+    currentVersion: 1,
+    publishedBy: null,
+    publishedAt: null,
+    archivedAt: null,
+    createdAt: "2026-11-24T06:00:00.000Z",
+    updatedAt: "2026-11-24T06:00:00.000Z",
+  };
+  assert.equal(shared.behavioralTemplateListResponseSchema.safeParse([{ ...row, questionCount: 0 }]).success, true);
+  for (const questionCount of [undefined, -1, 1.5]) {
+    assert.equal(shared.behavioralTemplateListResponseSchema.safeParse([{ ...row, questionCount }]).success, false, String(questionCount));
+  }
 });

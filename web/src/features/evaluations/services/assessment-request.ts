@@ -1,36 +1,53 @@
-import { submitBehavioralAssessmentRequestSchema } from "@pms/shared-types";
+import {
+  submitBehavioralAssessmentRequestSchema,
+  type ReviewAnswerDto,
+  type ReviewQuestionDto,
+  type ReviewSectionDto,
+} from "@pms/shared-types";
 
-import type { ReviewSection } from "@/types/review-question";
+/** The value of the form for a rating that the evaluator marks "Not observed". */
+export const NOT_OBSERVED = "not_observed";
 
-interface Answer {
-  questionId: string;
-  score?: number;
-  writtenAnswer?: string;
+/** One value of the form as the answer of its question. */
+function toAnswer({ questionId, questionType }: ReviewQuestionDto, value: string) {
+  switch (questionType) {
+    case "rating_scale":
+      return value === NOT_OBSERVED ? { questionId, isNotObserved: true } : { questionId, score: Number(value) };
+    case "multiple_choice":
+      return { questionId, optionId: value };
+    case "short_answer":
+    case "paragraph":
+      return { questionId, writtenAnswer: value };
+  }
 }
 
 /**
- * The scoring form keeps answers as text by question id. The API takes a score
- * for a rating scale question and written text for the other types. A question
- * with no answer is left out. The form's overall feedback has no column in
- * pms.assignment_responses, so it is not sent.
+ * The form keeps one text value per question id. The API takes a score, "Not observed", the
+ * chosen option, or a written text, by the type of the question. A blank question is left out:
+ * a draft may be incomplete. The written feedback is a free text beside the questions.
  */
 export function toSubmitBehavioralAssessmentRequest(
-  sections: readonly ReviewSection[],
-  answers: Readonly<Record<string, string>>,
+  sections: readonly ReviewSectionDto[],
+  values: Readonly<Record<string, string>>,
+  writtenFeedback = "",
 ) {
-  const responses: Answer[] = [];
-  for (const { questions } of sections) {
-    for (const question of questions) {
-      const answer = answers[question.id]?.trim() ?? "";
-      if (!answer) continue;
-      responses.push(
-        question.type === "rating_scale"
-          ? { questionId: question.id, score: Number(answer) }
-          : { questionId: question.id, writtenAnswer: answer },
-      );
-    }
-  }
-  return submitBehavioralAssessmentRequestSchema.safeParse({
-    answers: responses,
-  });
+  const answers = sections.flatMap((section) =>
+    section.questions.flatMap((question) => {
+      const value = values[question.questionId]?.trim() ?? "";
+      return value ? [toAnswer(question, value)] : [];
+    }),
+  );
+  return submitBehavioralAssessmentRequestSchema.safeParse({ answers, writtenFeedback });
+}
+
+/** The saved answers as the values of the form. */
+export function fromReviewAnswers(answers: readonly ReviewAnswerDto[]): Record<string, string> {
+  return Object.fromEntries(
+    answers.flatMap((answer) => {
+      const value = answer.isNotObserved
+        ? NOT_OBSERVED
+        : (answer.score?.toString() ?? answer.optionId ?? answer.writtenAnswer);
+      return value ? [[answer.questionId, value]] : [];
+    }),
+  );
 }

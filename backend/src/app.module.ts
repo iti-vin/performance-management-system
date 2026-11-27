@@ -21,6 +21,13 @@ import { KpiIndicatorScale } from "./modules/kpi-goals/entities/kpi-indicator-sc
 import { KpiIndicatorMatrixRow } from "./modules/kpi-goals/entities/kpi-indicator-matrix-row.entity.js";
 import { KpiIndicatorMatrixColumn } from "./modules/kpi-goals/entities/kpi-indicator-matrix-column.entity.js";
 import { KpiIndicatorMatrixCell } from "./modules/kpi-goals/entities/kpi-indicator-matrix-cell.entity.js";
+import { ReviewCyclesModule } from "./modules/review-cycles/review-cycles.module.js";
+import { Cycle } from "./modules/review-cycles/entities/cycle.entity.js";
+import { CycleParticipant } from "./modules/review-cycles/entities/cycle-participant.entity.js";
+import { CycleStage } from "./modules/review-cycles/entities/cycle-stage.entity.js";
+import { Assignment } from "./modules/review-cycles/entities/assignment.entity.js";
+import { ManagerAssignment } from "./modules/review-cycles/entities/manager-assignment.entity.js";
+import { AuditEvent } from "./common/entities/audit-event.entity.js";
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
@@ -53,6 +60,12 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
           KpiIndicatorMatrixColumn,
           KpiIndicatorMatrixCell,
           KpiIndicatorMatrixRow,
+          Cycle,
+          CycleParticipant,
+          CycleStage,
+          Assignment,
+          ManagerAssignment,
+          AuditEvent,
         ],
         // packages/database/schema owns the tables. Never let TypeORM alter them.
         synchronize: false,
@@ -64,6 +77,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     BehavioralAssessmentModule,
     EmployeeModule,
     KpiGoalsModule,
+    ReviewCyclesModule,
 
     ObserveModule.forRoot({ appKey: "YOUR_APP_KEY", appSecret: "YOUR_APP_SECRET", serviceId: "pms" }),
   ],

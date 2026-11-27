@@ -16,6 +16,22 @@ describe("BehavioralAssessmentController access", () => {
   });
 });
 
+describe("BehavioralAssessmentController scope", () => {
+  const service = { list: vi.fn(), getById: vi.fn(), update: vi.fn() };
+  const controller = new BehavioralAssessmentController(service as unknown as BehavioralAssessmentService);
+  const request = { user: { userId: "user-1" } } as never;
+
+  it("passes the signed-in user id to every read and to an update", async () => {
+    await controller.list(request);
+    await controller.getById("t-1", request);
+    await controller.update("t-1", {} as never, request);
+
+    expect(service.list).toHaveBeenCalledWith("user-1");
+    expect(service.getById).toHaveBeenCalledWith("t-1", "user-1");
+    expect(service.update).toHaveBeenCalledWith("t-1", {}, "user-1");
+  });
+});
+
 describe("BehavioralAssessmentController actor", () => {
   const service = { create: vi.fn(), publish: vi.fn(), createVersion: vi.fn() };
   const controller = new BehavioralAssessmentController(service as unknown as BehavioralAssessmentService);

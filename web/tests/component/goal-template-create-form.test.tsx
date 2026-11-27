@@ -189,7 +189,7 @@ describe("KpiGoalTemplateEditor", () => {
     expect(await screen.findByText("Leave without saving?")).toBeTruthy();
     expect(push).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Leave" }));
+    await user.click(screen.getByRole("button", { name: "Discard changes" }));
 
     expect(push).toHaveBeenCalledWith(BACK);
   });
@@ -200,7 +200,7 @@ describe("KpiGoalTemplateEditor", () => {
 
     await user.type(screen.getByLabelText("Indicator Name"), "x");
     await user.click(screen.getByRole("link", { name: /back to kpi goal templates/i }));
-    await user.click(await screen.findByRole("button", { name: "Leave" }));
+    await user.click(await screen.findByRole("button", { name: "Discard changes" }));
 
     expect(screen.queryByText("Leave without saving?")).toBeNull();
     expect((screen.getByLabelText("Indicator Name") as HTMLInputElement).value).toBe("Delivery rate");
